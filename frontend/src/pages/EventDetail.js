@@ -66,14 +66,6 @@ export default function EventDetail() {
             <p className="text-lg font-semibold">{event.location}</p>
           </div>
           <div>
-            <p className="text-gray-600">Category</p>
-            <p className="text-lg font-semibold">{event.category}</p>
-          </div>
-          <div>
-            <p className="text-gray-600">Price</p>
-            <p className="text-lg font-semibold text-blue-600">RM {event.price}</p>
-          </div>
-          <div>
             <p className="text-gray-600">Capacity</p>
             <p className="text-lg font-semibold">{event.capacity} slots</p>
           </div>
@@ -83,6 +75,21 @@ export default function EventDetail() {
           <p className="text-gray-600">Description</p>
           <p className="text-gray-700">{event.description || 'No description provided'}</p>
         </div>
+
+        {/* Categories and Pricing */}
+        {event.categories && event.categories.length > 0 && (
+          <div className="mb-6 border border-gray-300 rounded-lg p-4 bg-gray-50">
+            <p className="text-lg font-semibold mb-4 text-gray-900">Available Categories & Pricing:</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {event.categories.map((cat, idx) => (
+                <div key={idx} className="bg-white p-3 rounded-lg border border-gray-200">
+                  <p className="font-semibold text-gray-900">{cat.name}</p>
+                  <p className="text-lg font-bold text-blue-600">RM {cat.price.toFixed(2)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mb-6">
           <p className="text-gray-600">Organized by</p>

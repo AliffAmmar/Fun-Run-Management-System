@@ -2,15 +2,19 @@ const Event = require('../models/Event');
 
 const createEvent = async (req, res) => {
   try {
-    const { event_name, description, date, location, category, price, capacity } = req.body;
+    const { event_name, description, date, location, categories, capacity } = req.body;
+
+    // Validate that at least one category is provided
+    if (!categories || categories.length === 0) {
+      return res.status(400).json({ message: 'Please provide at least one category with price' });
+    }
 
     const event = await Event.create({
       event_name,
       description,
       date,
       location,
-      category,
-      price,
+      categories,
       capacity,
       organizer_id: req.user.userId,
       status: 'draft',
@@ -28,7 +32,7 @@ const createEvent = async (req, res) => {
 const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { event_name, description, date, location, category, price, capacity, status } = req.body;
+    const { event_name, description, date, location, categories, capacity, status } = req.body;
 
     const event = await Event.findById(id);
     if (!event) {
@@ -40,9 +44,22 @@ const updateEvent = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
 
+    // If categories are provided, validate at least one exists
+    if (categories && categories.length === 0) {
+      return res.status(400).json({ message: 'Please provide at least one category with price' });
+    }
+
     const updatedEvent = await Event.findByIdAndUpdate(
       id,
-      { event_name, description, date, location, category, price, capacity, status },
+      { 
+        event_name, 
+        description, 
+        date, 
+        location, 
+        categories, 
+        capacity, 
+        status 
+      },
       { new: true }
     );
 
@@ -100,7 +117,7 @@ const getAllEvents = async (req, res) => {
       filter.location = { $regex: location, $options: 'i' };
     }
     if (category) {
-      filter.category = category;
+      filter.categories = { $elemMatch: { name: category } };
     }
     if (search) {
       filter.event_name = { $regex: search, $options: 'i' };

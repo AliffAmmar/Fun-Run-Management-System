@@ -4,7 +4,7 @@ const Event = require('../models/Event');
 
 const registerForEvent = async (req, res) => {
   try {
-    const { event_id, category, shirt_size, emergency_contact, team_name } = req.body;
+    const { event_id, race_category, category, shirt_size, emergency_contact, team_name } = req.body;
 
     // Check if event exists
     const event = await Event.findById(event_id);
@@ -25,6 +25,7 @@ const registerForEvent = async (req, res) => {
     const registration = await Registration.create({
       user_id: req.user.userId,
       event_id,
+      race_category,
       category,
       shirt_size,
       emergency_contact,

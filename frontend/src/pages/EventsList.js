@@ -45,6 +45,16 @@ export default function EventsList() {
     }));
   };
 
+  const getLowestPrice = (categories) => {
+    if (!categories || categories.length === 0) return 0;
+    return Math.min(...categories.map((cat) => cat.price));
+  };
+
+  const getCategoryNames = (categories) => {
+    if (!categories || categories.length === 0) return 'Various';
+    return categories.map((cat) => cat.name).join(', ');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-6xl mx-auto">
@@ -52,10 +62,10 @@ export default function EventsList() {
           <h1 className="text-4xl font-bold text-gray-800">Browse Events</h1>
           {user && user.role === 'organizer' && (
             <Link
-              to="/create-event"
+              to="/manage-events"
               className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg"
             >
-              Create Event
+              Manage Events
             </Link>
           )}
         </div>
@@ -120,8 +130,8 @@ export default function EventsList() {
                 <div className="p-4">
                   <p className="text-sm text-gray-600 mb-2">📍 {event.location}</p>
                   <p className="text-sm text-gray-600 mb-2">📅 {new Date(event.date).toLocaleDateString()}</p>
-                  <p className="text-sm text-gray-600 mb-2">🏃 {event.category}</p>
-                  <p className="text-lg font-bold text-blue-600">RM {event.price}</p>
+                  <p className="text-sm text-gray-600 mb-2">🏃 {getCategoryNames(event.categories)}</p>
+                  <p className="text-lg font-bold text-blue-600">From RM {getLowestPrice(event.categories).toFixed(2)}</p>
                   <p className="text-xs text-gray-500 mt-2">{event.capacity} slots available</p>
                 </div>
               </Link>

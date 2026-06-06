@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 
 const CATEGORY_OPTIONS = ['5K', '10K', 'Half Marathon', 'Marathon', 'Family Run'];
 
-export default function CreateEvent() {
+export default function EditEvent() {
   const navigate = useNavigate();
+  const { eventId } = useParams();
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     event_name: '',
@@ -20,6 +22,32 @@ export default function CreateEvent() {
 
   const [currentCategory, setCurrentCategory] = useState('5K');
   const [currentPrice, setCurrentPrice] = useState('');
+
+  useEffect(() => {
+    fetchEventData();
+  }, [eventId]);
+
+  const fetchEventData = async () => {
+    try {
+      const response = await apiClient.get(`/events/${eventId}`);
+      const event = response.data.event;
+
+      setFormData({
+        event_name: event.event_name,
+        description: event.description,
+        date: event.date.substring(0, 16), // Format for datetime-local
+        location: event.location,
+        capacity: event.capacity,
+        categories: event.categories || [],
+      });
+
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to load event data');
+      console.error(err);
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -95,7 +123,7 @@ export default function CreateEvent() {
     setSubmitting(true);
 
     try {
-      const response = await apiClient.post('/events', {
+      await apiClient.put(`/events/${eventId}`, {
         event_name: formData.event_name,
         description: formData.description,
         date: formData.date,
@@ -104,16 +132,23 @@ export default function CreateEvent() {
         capacity: parseInt(formData.capacity),
       });
 
-      // Publish the event
-      await apiClient.post(`/events/${response.data.event._id}/publish`);
-
       navigate('/manage-events');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create event');
+      setError(err.response?.data?.message || 'Failed to update event');
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8">
+          <p className="text-gray-500">Loading event data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -122,7 +157,7 @@ export default function CreateEvent() {
           ← Back
         </button>
 
-        <h1 className="text-3xl font-bold mb-6">Create New Event</h1>
+        <h1 className="text-3xl font-bold mb-6">Edit Event</h1>
 
         {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
 
@@ -228,7 +263,7 @@ export default function CreateEvent() {
             {/* Added Categories Display */}
             {formData.categories.length > 0 && (
               <div className="bg-white rounded-lg p-3">
-                <p className="text-sm font-semibold text-gray-700 mb-3">Added Categories:</p>
+                <p className="text-sm font-semibold text-gray-700 mb-3">Categories:</p>
                 <div className="space-y-2">
                   {formData.categories.map((cat, idx) => (
                     <div key={idx} className="flex justify-between items-center bg-gray-100 p-3 rounded">
@@ -254,7 +289,7 @@ export default function CreateEvent() {
             disabled={submitting}
             className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg disabled:opacity-50"
           >
-            {submitting ? 'Creating Event...' : 'Create Event'}
+            {submitting ? 'Updating Event...' : 'Update Event'}
           </button>
         </form>
       </div>

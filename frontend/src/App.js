@@ -11,6 +11,8 @@ import EventDetail from './pages/EventDetail';
 import EventRegistration from './pages/EventRegistration';
 import MyTickets from './pages/MyTickets';
 import CreateEvent from './pages/CreateEvent';
+import ManageEvents from './pages/ManageEvents';
+import EditEvent from './pages/EditEvent';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -56,6 +58,22 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <CreateEvent />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/manage-events"
+          element={
+            <ProtectedRoute>
+              <ManageEvents />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/edit-event/:eventId"
+          element={
+            <ProtectedRoute>
+              <EditEvent />
             </ProtectedRoute>
           }
         />

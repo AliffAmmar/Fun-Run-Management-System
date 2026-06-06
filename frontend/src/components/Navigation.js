@@ -30,8 +30,8 @@ export default function Navigation() {
               </Link>
 
               {user.role === 'organizer' && (
-                <Link to="/create-event" className="hover:text-blue-100">
-                  Create Event
+                <Link to="/manage-events" className="hover:text-blue-100">
+                  Manage Events
                 </Link>
               )}
 

@@ -9,7 +9,7 @@ const eventSchema = new mongoose.Schema(
     },
     description: {
       type: String,
-      default: '',
+      required: [true, 'Please provide event description'],
     },
     date: {
       type: Date,
@@ -19,16 +19,19 @@ const eventSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide event location'],
     },
-    category: {
-      type: String,
-      enum: ['5K', '10K', 'Half Marathon', 'Marathon', 'Family Run'],
-      required: true,
-    },
-    price: {
-      type: Number,
-      required: [true, 'Please provide event price'],
-      default: 0,
-    },
+    categories: [
+      {
+        name: {
+          type: String,
+          enum: ['5K', '10K', 'Half Marathon', 'Marathon', 'Family Run'],
+          required: true,
+        },
+        price: {
+          type: Number,
+          required: true,
+        },
+      },
+    ],
     capacity: {
       type: Number,
       required: [true, 'Please provide event capacity'],

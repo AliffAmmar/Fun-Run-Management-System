@@ -12,9 +12,11 @@ export default function EventRegistration() {
   const [step, setStep] = useState(1); // 1: Register, 2: Payment, 3: Ticket
   const [registrationId, setRegistrationId] = useState(null);
   const [ticketData, setTicketData] = useState(null);
+  const [selectedPrice, setSelectedPrice] = useState(0);
 
   const [formData, setFormData] = useState({
-    category: '',
+    race_category: '', // The race category (5K, 10K, etc.)
+    registration_category: '', // How they're registering (Individual, Team)
     shirt_size: 'M',
     emergency_contact: '',
     team_name: '',
@@ -28,6 +30,14 @@ export default function EventRegistration() {
     try {
       const response = await apiClient.get(`/events/${eventId}`);
       setEvent(response.data.event);
+      // Set initial price from first category
+      if (response.data.event.categories && response.data.event.categories.length > 0) {
+        setSelectedPrice(response.data.event.categories[0].price);
+        setFormData((prev) => ({
+          ...prev,
+          race_category: response.data.event.categories[0].name,
+        }));
+      }
     } catch (err) {
       setError('Failed to load event');
     } finally {
@@ -43,7 +53,11 @@ export default function EventRegistration() {
     try {
       const response = await apiClient.post('/registrations', {
         event_id: eventId,
-        ...formData,
+        category: formData.registration_category,
+        race_category: formData.race_category,
+        shirt_size: formData.shirt_size,
+        emergency_contact: formData.emergency_contact,
+        team_name: formData.team_name,
       });
       setRegistrationId(response.data.registration._id);
       setStep(2);
@@ -62,7 +76,7 @@ export default function EventRegistration() {
       // Process payment
       await apiClient.post('/payments', {
         registration_id: registrationId,
-        amount: event.price,
+        amount: selectedPrice,
         payment_method: 'credit_card',
       });
 
@@ -86,6 +100,14 @@ export default function EventRegistration() {
       ...prev,
       [name]: value,
     }));
+
+    // If race category changed, update the price
+    if (name === 'race_category' && event?.categories) {
+      const selectedCat = event.categories.find((cat) => cat.name === value);
+      if (selectedCat) {
+        setSelectedPrice(selectedCat.price);
+      }
+    }
   };
 
   if (loading) {
@@ -120,11 +142,28 @@ export default function EventRegistration() {
         {step === 1 && (
           <form onSubmit={handleRegistration}>
             <div className="mb-4">
-              <label className="block text-gray-700 font-semibold mb-2">Category *</label>
+              <label className="block text-gray-700 font-semibold mb-2">Race Category *</label>
+              <select
+                name="race_category"
+                value={formData.race_category}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              >
+                {event?.categories?.map((cat) => (
+                  <option key={cat.name} value={cat.name}>
+                    {cat.name} - RM {cat.price.toFixed(2)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-gray-700 font-semibold mb-2">Registration Type *</label>
               <input
                 type="text"
-                name="category"
-                value={formData.category}
+                name="registration_category"
+                value={formData.registration_category}
                 onChange={handleChange}
                 required
                 placeholder="e.g., Individual, Team"
@@ -189,8 +228,11 @@ export default function EventRegistration() {
         {step === 2 && (
           <div>
             <div className="bg-gray-100 p-6 rounded-lg mb-6">
-              <p className="text-gray-600 mb-2">Event Price</p>
-              <p className="text-3xl font-bold text-blue-600">RM {event?.price}</p>
+              <p className="text-gray-600 mb-2">Total Amount Due</p>
+              <p className="text-3xl font-bold text-blue-600">RM {selectedPrice.toFixed(2)}</p>
+              <p className="text-sm text-gray-600 mt-2">
+                {formData.race_category} ({formData.registration_category})
+              </p>
             </div>
 
             <p className="text-gray-700 mb-6">

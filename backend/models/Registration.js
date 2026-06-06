@@ -12,9 +12,15 @@ const registrationSchema = new mongoose.Schema(
       ref: 'Event',
       required: true,
     },
+    race_category: {
+      type: String,
+      required: true,
+      description: 'The race category selected (5K, 10K, etc.)',
+    },
     category: {
       type: String,
       required: true,
+      description: 'Registration type (Individual, Team, etc.)',
     },
     shirt_size: {
       type: String,
