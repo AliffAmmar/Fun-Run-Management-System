@@ -35,7 +35,7 @@ export default function EditEvent() {
       setFormData({
         event_name: event.event_name,
         description: event.description,
-        date: event.date.substring(0, 16), // Format for datetime-local
+        date: event.date.substring(0, 16),
         location: event.location,
         capacity: event.capacity,
         categories: event.categories || [],
@@ -70,7 +70,6 @@ export default function EditEvent() {
       return;
     }
 
-    // Check if category already added
     if (formData.categories.find((cat) => cat.name === currentCategory)) {
       setError('This category has already been added');
       return;
@@ -102,7 +101,6 @@ export default function EditEvent() {
     e.preventDefault();
     setError('');
 
-    // Validation
     if (!formData.event_name.trim()) {
       setError('Event name is required');
       return;
@@ -142,156 +140,190 @@ export default function EditEvent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
-        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8">
-          <p className="text-gray-500">Loading event data...</p>
+      <div className="bg-gradient-to-b from-slate-50 to-white min-h-screen py-12 px-6">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="inline-block">
+            <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin mb-4"></div>
+            <p className="text-slate-600 font-semibold">Loading event data...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-8">
-        <button onClick={() => navigate(-1)} className="text-blue-500 hover:underline mb-4">
+    <div className="bg-gradient-to-b from-slate-50 via-white to-orange-50 min-h-screen py-12 px-6">
+      <div className="max-w-3xl mx-auto">
+        <button onClick={() => navigate(-1)} className="text-orange-600 hover:text-orange-700 font-bold mb-8 inline-block text-lg">
           ← Back
         </button>
 
-        <h1 className="text-3xl font-bold mb-6">Edit Event</h1>
-
-        {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label className="block text-gray-700 font-semibold mb-2">Event Name *</label>
-            <input
-              type="text"
-              name="event_name"
-              value={formData.event_name}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-              placeholder="Fun Run 2026"
-            />
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-slate-900 via-red-700 to-orange-600 p-8 text-white">
+            <h1 className="text-4xl font-black mb-2">Edit Event</h1>
+            <p className="text-orange-100">Update your event details and pricing</p>
           </div>
 
-          <div className="mb-4">
-            <label className="block text-gray-700 font-semibold mb-2">Description *</label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-              placeholder="Event description..."
-              rows="4"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Date *</label>
-              <input
-                type="datetime-local"
-                name="date"
-                value={formData.date}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-semibold mb-2">Location *</label>
-              <LocationAutocomplete value={formData.location} onChange={handleLocationChange} />
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <label className="block text-gray-700 font-semibold mb-2">Capacity *</label>
-            <input
-              type="number"
-              name="capacity"
-              value={formData.capacity}
-              onChange={handleChange}
-              required
-              min="1"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-              placeholder="Number of participants"
-            />
-          </div>
-
-          {/* Categories Section */}
-          <div className="mb-6 border border-gray-300 rounded-lg p-4 bg-gray-50">
-            <h3 className="text-lg font-semibold mb-4 text-gray-900">Event Categories & Pricing *</h3>
-
-            <div className="grid grid-cols-1 gap-3 mb-4">
-              <div>
-                <label className="block text-gray-700 font-semibold mb-2">Select Category</label>
-                <select
-                  value={currentCategory}
-                  onChange={(e) => setCurrentCategory(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                >
-                  {CATEGORY_OPTIONS.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-gray-700 font-semibold mb-2">Price (RM)</label>
-                <input
-                  type="number"
-                  value={currentPrice}
-                  onChange={(e) => setCurrentPrice(e.target.value)}
-                  step="0.01"
-                  min="0"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                  placeholder="0.00"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={addCategory}
-                className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition"
-              >
-                + Add Category
-              </button>
-            </div>
-
-            {/* Added Categories Display */}
-            {formData.categories.length > 0 && (
-              <div className="bg-white rounded-lg p-3">
-                <p className="text-sm font-semibold text-gray-700 mb-3">Categories:</p>
-                <div className="space-y-2">
-                  {formData.categories.map((cat, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-gray-100 p-3 rounded">
-                      <span className="font-medium text-gray-900">
-                        {cat.name} - RM {cat.price.toFixed(2)}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => removeCategory(idx)}
-                        className="text-red-500 hover:text-red-700 font-semibold"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                </div>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="p-8 space-y-8">
+            {error && (
+              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg font-semibold">
+                {error}
               </div>
             )}
-          </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg disabled:opacity-50"
-          >
-            {submitting ? 'Updating Event...' : 'Update Event'}
-          </button>
-        </form>
+            {/* Event Basics */}
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">Event Details</h2>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Event Name *</label>
+                <input
+                  type="text"
+                  name="event_name"
+                  value={formData.event_name}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
+                  placeholder="Fun Run 2026"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Description *</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition resize-none"
+                  placeholder="Describe your event..."
+                  rows="4"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Date & Time *</label>
+                  <input
+                    type="datetime-local"
+                    name="date"
+                    value={formData.date}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Location *</label>
+                  <LocationAutocomplete value={formData.location} onChange={handleLocationChange} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Capacity *</label>
+                <input
+                  type="number"
+                  name="capacity"
+                  value={formData.capacity}
+                  onChange={handleChange}
+                  required
+                  min="1"
+                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
+                  placeholder="Number of participants"
+                />
+              </div>
+            </div>
+
+            {/* Categories Section */}
+            <div className="space-y-4 border-t-2 border-slate-200 pt-8">
+              <h2 className="text-2xl font-bold text-slate-900 mb-6">Race Categories & Pricing</h2>
+
+              <div className="bg-gradient-to-br from-slate-50 to-orange-50 p-6 rounded-xl border-2 border-orange-200 space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Select Category</label>
+                  <select
+                    value={currentCategory}
+                    onChange={(e) => setCurrentCategory(e.target.value)}
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
+                  >
+                    {CATEGORY_OPTIONS.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Price (RM)</label>
+                  <input
+                    type="number"
+                    value={currentPrice}
+                    onChange={(e) => setCurrentPrice(e.target.value)}
+                    step="0.01"
+                    min="0"
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
+                    placeholder="0.00"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addCategory}
+                  className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 transform hover:scale-105 uppercase tracking-wide"
+                >
+                  + Add Category
+                </button>
+              </div>
+
+              {/* Added Categories Display */}
+              {formData.categories.length > 0 && (
+                <div className="bg-white border-2 border-slate-200 rounded-xl p-6">
+                  <p className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Current Categories:</p>
+                  <div className="space-y-3">
+                    {formData.categories.map((cat, idx) => (
+                      <div
+                        key={idx}
+                        className="flex justify-between items-center bg-gradient-to-r from-orange-100 to-red-100 p-4 rounded-lg border-2 border-orange-300"
+                      >
+                        <span className="font-bold text-slate-900 text-lg">
+                          {cat.name} - RM {cat.price.toFixed(2)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeCategory(idx)}
+                          className="text-red-600 hover:text-red-800 font-bold text-lg transition"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Submit Buttons */}
+            <div className="pt-8 flex gap-4">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition duration-300 disabled:opacity-50 transform hover:scale-105 text-lg uppercase tracking-wide"
+              >
+                {submitting ? 'Updating Event...' : 'Update Event'}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="bg-slate-200 hover:bg-slate-300 text-slate-900 font-bold py-4 px-6 rounded-lg transition duration-300 text-lg uppercase tracking-wide"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

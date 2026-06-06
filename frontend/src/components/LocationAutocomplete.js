@@ -8,7 +8,6 @@ export default function LocationAutocomplete({ value, onChange }) {
   const timeoutRef = useRef(null);
 
   useEffect(() => {
-    // Close suggestions when clicking outside
     const handleClickOutside = (e) => {
       if (suggestionsRef.current && !suggestionsRef.current.contains(e.target)) {
         setShowSuggestions(false);
@@ -33,11 +32,9 @@ export default function LocationAutocomplete({ value, onChange }) {
       );
       const data = await response.json();
 
-      // Format the results to be more readable
       const formattedSuggestions = data.map((item) => ({
         id: item.place_id,
         display_name: item.display_name,
-        // Extract the city/town name from the full address
         short_name: item.address?.city || item.address?.town || item.name,
       }));
 
@@ -55,7 +52,6 @@ export default function LocationAutocomplete({ value, onChange }) {
     const searchTerm = e.target.value;
     onChange(searchTerm);
 
-    // Debounce the API call
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
@@ -66,9 +62,8 @@ export default function LocationAutocomplete({ value, onChange }) {
   };
 
   const handleSelectSuggestion = (suggestion) => {
-    // Extract city/area name from the display_name
     const parts = suggestion.display_name.split(',');
-    const location = parts.slice(0, 2).join(',').trim(); // Get city and state/country
+    const location = parts.slice(0, 2).join(',').trim();
     onChange(location);
     setShowSuggestions(false);
     setSuggestions([]);
@@ -82,13 +77,13 @@ export default function LocationAutocomplete({ value, onChange }) {
         onChange={handleChange}
         onFocus={() => value.length > 0 && suggestions.length > 0 && setShowSuggestions(true)}
         placeholder="City, Country"
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
       />
 
       {loading && (
-        <div className="absolute right-3 top-2.5">
+        <div className="absolute right-4 top-3.5">
           <div className="animate-spin">
-            <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg className="h-5 w-5 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path
                 className="opacity-75"
@@ -101,23 +96,30 @@ export default function LocationAutocomplete({ value, onChange }) {
       )}
 
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          {suggestions.map((suggestion) => (
+        <div className="absolute z-50 w-full mt-2 bg-white border-2 border-orange-200 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
+          {suggestions.map((suggestion, idx) => (
             <button
               key={suggestion.id}
               onClick={() => handleSelectSuggestion(suggestion)}
-              className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-200 last:border-b-0 transition"
+              className={`w-full text-left px-4 py-4 hover:bg-gradient-to-r hover:from-orange-50 hover:to-red-50 transition border-b border-slate-100 last:border-b-0 ${
+                idx === 0 ? 'rounded-t-xl' : ''
+              } ${idx === suggestions.length - 1 ? 'rounded-b-xl' : ''}`}
             >
-              <p className="font-medium text-gray-900">{suggestion.short_name}</p>
-              <p className="text-sm text-gray-500">{suggestion.display_name.split(',').slice(-2).join(',')}</p>
+              <div className="flex items-center gap-3">
+                <span className="text-lg">📍</span>
+                <div>
+                  <p className="font-bold text-slate-900">{suggestion.short_name}</p>
+                  <p className="text-sm text-slate-600">{suggestion.display_name.split(',').slice(-2).join(',')}</p>
+                </div>
+              </div>
             </button>
           ))}
         </div>
       )}
 
       {showSuggestions && value.length > 0 && suggestions.length === 0 && !loading && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3">
-          <p className="text-sm text-gray-500">No locations found</p>
+        <div className="absolute z-50 w-full mt-2 bg-white border-2 border-slate-200 rounded-xl shadow-lg p-4">
+          <p className="text-sm text-slate-600 text-center font-semibold">No locations found in Malaysia</p>
         </div>
       )}
     </div>
