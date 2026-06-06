@@ -520,3 +520,5 @@ Created as a Fun Run Management System by Abdul Aliff Ammar Bin Abdul Khalid
 For issues or questions, check the API endpoints documentation or review the example flows in this README.
 
 Happy Running! 🏃‍♂️🏃‍♀️
+#   F u n - R u n - M a n a g e m e n t - S y s t e m  
+ 
