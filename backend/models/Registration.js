@@ -20,14 +20,19 @@ const registrationSchema = new mongoose.Schema(
       description: 'Registration type: individual or team',
     },
 
-    // ===== For individual registrations - CONDITIONAL REQUIRED =====
+    // ===== REQUIRED FOR BOTH individual AND team =====
     race_category: {
       type: String,
-      required: function() {
-        return this.registration_type === 'individual';
-      },
-      description: 'The race category selected (5K, 10K, etc.)',
+      required: true,
+      description: 'The race category selected (5K, 10K, etc.) - required for both types',
     },
+    emergency_contact: {
+      type: String,
+      required: true,
+      description: 'Emergency contact number - required for both types',
+    },
+
+    // ===== For individual registrations only =====
     shirt_size: {
       type: String,
       enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
@@ -36,15 +41,8 @@ const registrationSchema = new mongoose.Schema(
       },
       description: 'Single shirt size for individual registration',
     },
-    emergency_contact: {
-      type: String,
-      required: function() {
-        return this.registration_type === 'individual';
-      },
-      description: 'Emergency contact number for individual registration',
-    },
 
-    // ===== For team registrations =====
+    // ===== For team registrations only =====
     team_name: {
       type: String,
       required: function() {
@@ -61,6 +59,9 @@ const registrationSchema = new mongoose.Schema(
       type: Map,
       of: Number,
       default: new Map(),
+      required: function() {
+        return this.registration_type === 'team';
+      },
       description: 'Size distribution for team: { "XS": 5, "S": 10, "M": 8, "L": 7, "XL": 0, "XXL": 0 }',
     },
 

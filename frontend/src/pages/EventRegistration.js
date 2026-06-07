@@ -14,7 +14,7 @@ export default function EventRegistration() {
   const [ticketData, setTicketData] = useState(null);
   const [selectedPrice, setSelectedPrice] = useState(0);
 
-  // ===== NEW: Registration type state =====
+  // ===== Registration type state =====
   const [registrationType, setRegistrationType] = useState('individual');
 
   const [formData, setFormData] = useState({
@@ -24,7 +24,7 @@ export default function EventRegistration() {
     team_name: '',
   });
 
-  // ===== NEW: Shirt sizes for team registration =====
+  // ===== Shirt sizes for team registration =====
   const [shirtSizes, setShirtSizes] = useState({
     XS: 0,
     S: 0,
@@ -58,12 +58,12 @@ export default function EventRegistration() {
     }
   };
 
-  // ===== NEW: Calculate team size from shirt sizes =====
+  // ===== Calculate team size from shirt sizes =====
   const calculateTeamSize = () => {
     return Object.values(shirtSizes).reduce((sum, qty) => sum + qty, 0);
   };
 
-  // ===== NEW: Calculate total price =====
+  // ===== Calculate total price =====
   const calculateTotalPrice = () => {
     if (registrationType === 'individual') {
       return selectedPrice;
@@ -72,7 +72,7 @@ export default function EventRegistration() {
     }
   };
 
-  // ===== NEW: Handle shirt size change =====
+  // ===== Handle shirt size change =====
   const handleShirtSizeChange = (size, quantity) => {
     setShirtSizes((prev) => ({
       ...prev,
@@ -94,8 +94,8 @@ export default function EventRegistration() {
           return;
         }
       } else if (registrationType === 'team') {
-        if (!formData.team_name || calculateTeamSize() < 2) {
-          setError('Team must have at least 2 participants');
+        if (!formData.race_category || !formData.team_name || !formData.emergency_contact || calculateTeamSize() < 2) {
+          setError('Please fill in all required fields and ensure team has at least 2 participants');
           setSubmitting(false);
           return;
         }
@@ -105,12 +105,12 @@ export default function EventRegistration() {
       const payload = {
         event_id: eventId,
         registration_type: registrationType,
+        race_category: formData.race_category,
+        emergency_contact: formData.emergency_contact,
       };
 
       if (registrationType === 'individual') {
-        payload.race_category = formData.race_category;
         payload.shirt_size = formData.shirt_size;
-        payload.emergency_contact = formData.emergency_contact;
       } else {
         payload.team_name = formData.team_name;
         payload.shirt_sizes = shirtSizes;
@@ -223,7 +223,7 @@ export default function EventRegistration() {
             {/* Step 1: Registration Form */}
             {step === 1 && (
               <form onSubmit={handleRegistration} className="space-y-6">
-                {/* ===== NEW: Registration Type Toggle ===== */}
+                {/* ===== Registration Type Toggle ===== */}
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Registration Type *</label>
                   <div className="flex gap-6 bg-slate-50 p-4 rounded-lg border-2 border-slate-200">
@@ -308,6 +308,25 @@ export default function EventRegistration() {
                 {/* ===== TEAM SECTION ===== */}
                 {registrationType === 'team' && (
                   <div className="space-y-6 bg-green-50 p-6 rounded-lg border-2 border-green-200">
+                    {/* Race Category for Team */}
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Race Category *</label>
+                      <select
+                        name="race_category"
+                        value={formData.race_category}
+                        onChange={handleChange}
+                        required
+                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
+                      >
+                        {event?.categories?.map((cat) => (
+                          <option key={cat.name} value={cat.name}>
+                            {cat.name} - RM {cat.price.toFixed(2)} per person
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Team Name */}
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Organization / Team Name *</label>
                       <input
@@ -321,6 +340,21 @@ export default function EventRegistration() {
                       />
                     </div>
 
+                    {/* Emergency Contact for Team */}
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Emergency Contact (Team Leader) *</label>
+                      <input
+                        type="text"
+                        name="emergency_contact"
+                        value={formData.emergency_contact}
+                        onChange={handleChange}
+                        required
+                        placeholder="Phone number"
+                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
+                      />
+                    </div>
+
+                    {/* Shirt Sizes */}
                     <div>
                       <label className="block text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Select Shirt Sizes *</label>
                       <div className="grid grid-cols-3 gap-4">
@@ -400,7 +434,7 @@ export default function EventRegistration() {
                   <p className="text-sm text-slate-700 font-semibold mt-4">
                     {registrationType === 'individual' 
                       ? `${formData.race_category}` 
-                      : `${formData.team_name} • ${calculateTeamSize()} participants`
+                      : `${formData.team_name} • ${formData.race_category} • ${calculateTeamSize()} participants`
                     }
                   </p>
                 </div>
@@ -444,6 +478,10 @@ export default function EventRegistration() {
                     <p className="text-sm font-semibold text-slate-600 mb-2">Registration Type:</p>
                     <p className="text-lg font-bold text-blue-600">
                       {ticketData.registration_type === 'individual' ? '👤 Individual' : `👥 Team - ${ticketData.team_size} Participants`}
+                    </p>
+                    <p className="text-sm font-semibold text-slate-600 mt-3 mb-1">Race Category:</p>
+                    <p className="text-lg font-bold text-blue-600">
+                      {ticketData.race_category}
                     </p>
                   </div>
                 </div>

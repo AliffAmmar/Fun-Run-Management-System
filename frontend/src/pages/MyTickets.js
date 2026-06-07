@@ -120,7 +120,7 @@ export default function MyTickets() {
                       </div>
                     </div>
 
-                    {/* ===== NEW: Registration Type & Team Info ===== */}
+                    {/* ===== Registration Type & Details (UPDATED FOR BOTH TYPES) ===== */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                       {/* Registration Type Badge */}
                       <div className="bg-slate-50 p-4 rounded-lg border-2 border-blue-200">
@@ -135,15 +135,13 @@ export default function MyTickets() {
                         </div>
                       </div>
 
-                      {/* Race Category (Individual only) */}
-                      {ticket.registration_type === 'individual' && (
-                        <div className="bg-slate-50 p-4 rounded-lg border-2 border-green-200">
-                          <p className="text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Race Category</p>
-                          <p className="font-bold text-slate-900 text-lg">
-                            {ticket.registration_id?.race_category || 'N/A'}
-                          </p>
-                        </div>
-                      )}
+                      {/* Race Category (Now For BOTH Types) */}
+                      <div className="bg-slate-50 p-4 rounded-lg border-2 border-green-200">
+                        <p className="text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Race Category</p>
+                        <p className="font-bold text-slate-900 text-lg">
+                          {ticket.registration_id?.race_category || 'N/A'}
+                        </p>
+                      </div>
 
                       {/* Team Size (Team only) */}
                       {ticket.registration_type === 'team' && (
@@ -154,9 +152,17 @@ export default function MyTickets() {
                           </p>
                         </div>
                       )}
+
+                      {/* Emergency Contact (Now For BOTH Types) */}
+                      <div className="bg-slate-50 p-4 rounded-lg border-2 border-yellow-200">
+                        <p className="text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Emergency Contact</p>
+                        <p className="font-bold text-slate-900 text-lg">
+                          {ticket.registration_id?.emergency_contact || 'N/A'}
+                        </p>
+                      </div>
                     </div>
 
-                    {/* ===== NEW: Shirt Size Breakdown (Team only) ===== */}
+                    {/* ===== Shirt Size Breakdown (Team only) ===== */}
                     {ticket.registration_type === 'team' && ticket.shirt_sizes && Object.keys(ticket.shirt_sizes).length > 0 && (
                       <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200 mb-4">
                         <p className="text-xs font-bold text-slate-600 uppercase mb-3 tracking-wide">📊 Shirt Size Distribution</p>

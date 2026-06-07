@@ -11,7 +11,7 @@ const registerForEvent = async (req, res) => {
       shirt_size,
       emergency_contact,
       team_name,
-      shirt_sizes, // For team registrations
+      shirt_sizes,
     } = req.body;
 
     // Check if event exists
@@ -20,12 +20,19 @@ const registerForEvent = async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
+    // ===== COMMON VALIDATION FOR BOTH TYPES =====
+    if (!race_category || !emergency_contact) {
+      return res.status(400).json({
+        message: 'Missing required fields: race_category and emergency_contact are required',
+      });
+    }
+
     // ===== INDIVIDUAL REGISTRATION =====
     if (registration_type === 'individual') {
-      // Validate required fields for individual
-      if (!race_category || !shirt_size || !emergency_contact) {
+      // Validate individual-specific fields
+      if (!shirt_size) {
         return res.status(400).json({
-          message: 'Missing required fields: race_category, shirt_size, emergency_contact',
+          message: 'Missing required field: shirt_size',
         });
       }
 
@@ -40,6 +47,12 @@ const registerForEvent = async (req, res) => {
         return res.status(400).json({ message: 'Already registered for this event' });
       }
 
+      // Find price for selected category
+      const selectedCategory = event.categories.find((cat) => cat.name === race_category);
+      if (!selectedCategory) {
+        return res.status(400).json({ message: 'Invalid race category' });
+      }
+
       // Create individual registration
       const registration = await Registration.create({
         user_id: req.user.userId,
@@ -49,7 +62,7 @@ const registerForEvent = async (req, res) => {
         shirt_size,
         emergency_contact,
         team_size: 1,
-        total_amount: event.price || 0,
+        total_amount: selectedCategory.price,
         registration_status: 'pending',
       });
 
@@ -61,10 +74,10 @@ const registerForEvent = async (req, res) => {
 
     // ===== TEAM REGISTRATION =====
     if (registration_type === 'team') {
-      // Validate required fields for team
+      // Validate team-specific fields
       if (!team_name || !shirt_sizes) {
         return res.status(400).json({
-          message: 'Missing required fields: team_name, shirt_sizes',
+          message: 'Missing required fields: team_name and shirt_sizes',
         });
       }
 
@@ -86,19 +99,28 @@ const registerForEvent = async (req, res) => {
         }
       }
 
-      // Create team registration (allow multiple team registrations per user)
-      const total_amount = (event.price || 0) * team_size;
+      // Find price for selected category
+      const selectedCategory = event.categories.find((cat) => cat.name === race_category);
+      if (!selectedCategory) {
+        return res.status(400).json({ message: 'Invalid race category' });
+      }
 
-      // ===== FIX: Convert shirt_sizes properly for Mongoose Map =====
+      // Calculate total amount
+      const total_amount = selectedCategory.price * team_size;
+
+      // Convert shirt_sizes properly for Mongoose Map
       const shirtSizesMap = new Map();
       for (const [size, qty] of Object.entries(shirt_sizes)) {
         shirtSizesMap.set(size, qty);
       }
 
+      // Create team registration (allow multiple team registrations per user)
       const registration = await Registration.create({
         user_id: req.user.userId,
         event_id,
         registration_type: 'team',
+        race_category,
+        emergency_contact,
         team_name,
         team_size,
         shirt_sizes: shirtSizesMap,
