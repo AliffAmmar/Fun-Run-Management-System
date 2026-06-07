@@ -28,20 +28,25 @@ const generateTicket = async (req, res) => {
     // Generate ticket code
     const ticket_code = generateTicketCode();
 
-    // Generate QR code
+    // ===== NEW: Include registration type & team info in QR code =====
     const qrData = JSON.stringify({
       ticket_code,
       registration_id: registration_id.toString(),
+      registration_type: registration.registration_type,
+      team_size: registration.team_size,
       timestamp: new Date(),
     });
 
     const qr_code = await generateQRCode(qrData);
 
-    // Create ticket
+    // ===== NEW: Store registration_type, team_size, shirt_sizes on ticket =====
     const ticket = await Ticket.create({
       registration_id,
       qr_code,
       ticket_code,
+      registration_type: registration.registration_type,
+      team_size: registration.team_size,
+      shirt_sizes: registration.shirt_sizes,
       check_in_status: false,
     });
 
@@ -63,7 +68,7 @@ const getTicketByRegistration = async (req, res) => {
         path: 'registration_id',
         populate: [
           { path: 'user_id', select: 'name email' },
-          { path: 'event_id', select: 'event_name date location' },
+          { path: 'event_id', select: 'event_name date location price' },
         ],
       });
 
@@ -83,15 +88,21 @@ const getUserTickets = async (req, res) => {
     const registrations = await Registration.find({ user_id: req.user.userId });
     const registrationIds = registrations.map((r) => r._id);
 
-    const tickets = await Ticket.find({ registration_id: { $in: registrationIds } }).populate({
-      path: 'registration_id',
-      populate: [
-        { path: 'user_id', select: 'name email' },
-        { path: 'event_id', select: 'event_name date location' },
-      ],
-    });
+    const tickets = await Ticket.find({ registration_id: { $in: registrationIds } })
+      .sort({ createdAt: -1 })
+      .populate({
+        path: 'registration_id',
+        populate: [
+          { path: 'user_id', select: 'name email' },
+          { path: 'event_id', select: 'event_name date location price' },
+        ],
+      });
 
-    res.json({ tickets });
+    res.json({ 
+      message: 'Tickets retrieved successfully',
+      count: tickets.length,
+      tickets 
+    });
   } catch (error) {
     res.status(500).json({ message: 'Failed to get tickets', error: error.message });
   }
@@ -110,7 +121,9 @@ const checkInTicket = async (req, res) => {
       return res.status(400).json({ message: 'Ticket already checked in' });
     }
 
+    // ===== NEW: Store check-in timestamp =====
     ticket.check_in_status = true;
+    ticket.check_in_date = new Date();
     await ticket.save();
 
     res.json({

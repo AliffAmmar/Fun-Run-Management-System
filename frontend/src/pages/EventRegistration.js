@@ -14,13 +14,27 @@ export default function EventRegistration() {
   const [ticketData, setTicketData] = useState(null);
   const [selectedPrice, setSelectedPrice] = useState(0);
 
+  // ===== NEW: Registration type state =====
+  const [registrationType, setRegistrationType] = useState('individual');
+
   const [formData, setFormData] = useState({
     race_category: '',
-    registration_category: '',
     shirt_size: 'M',
     emergency_contact: '',
     team_name: '',
   });
+
+  // ===== NEW: Shirt sizes for team registration =====
+  const [shirtSizes, setShirtSizes] = useState({
+    XS: 0,
+    S: 0,
+    M: 0,
+    L: 0,
+    XL: 0,
+    XXL: 0,
+  });
+
+  const shirtSizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
   useEffect(() => {
     fetchEvent();
@@ -44,20 +58,66 @@ export default function EventRegistration() {
     }
   };
 
+  // ===== NEW: Calculate team size from shirt sizes =====
+  const calculateTeamSize = () => {
+    return Object.values(shirtSizes).reduce((sum, qty) => sum + qty, 0);
+  };
+
+  // ===== NEW: Calculate total price =====
+  const calculateTotalPrice = () => {
+    if (registrationType === 'individual') {
+      return selectedPrice;
+    } else {
+      return selectedPrice * calculateTeamSize();
+    }
+  };
+
+  // ===== NEW: Handle shirt size change =====
+  const handleShirtSizeChange = (size, quantity) => {
+    setShirtSizes((prev) => ({
+      ...prev,
+      [size]: Math.max(0, quantity),
+    }));
+  };
+
   const handleRegistration = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setError('');
 
     try {
-      const response = await apiClient.post('/registrations', {
+      // ===== VALIDATION =====
+      if (registrationType === 'individual') {
+        if (!formData.race_category || !formData.shirt_size || !formData.emergency_contact) {
+          setError('Please fill in all required fields');
+          setSubmitting(false);
+          return;
+        }
+      } else if (registrationType === 'team') {
+        if (!formData.team_name || calculateTeamSize() < 2) {
+          setError('Team must have at least 2 participants');
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      // ===== BUILD PAYLOAD =====
+      const payload = {
         event_id: eventId,
-        category: formData.registration_category,
-        race_category: formData.race_category,
-        shirt_size: formData.shirt_size,
-        emergency_contact: formData.emergency_contact,
-        team_name: formData.team_name,
-      });
+        registration_type: registrationType,
+      };
+
+      if (registrationType === 'individual') {
+        payload.race_category = formData.race_category;
+        payload.shirt_size = formData.shirt_size;
+        payload.emergency_contact = formData.emergency_contact;
+      } else {
+        payload.team_name = formData.team_name;
+        payload.shirt_sizes = shirtSizes;
+      }
+
+      // ===== SEND TO BACKEND =====
+      const response = await apiClient.post('/registrations', payload);
       setRegistrationId(response.data.registration._id);
       setStep(2);
     } catch (err) {
@@ -74,7 +134,7 @@ export default function EventRegistration() {
     try {
       await apiClient.post('/payments', {
         registration_id: registrationId,
-        amount: selectedPrice,
+        amount: calculateTotalPrice(),
         payment_method: 'credit_card',
       });
 
@@ -163,77 +223,160 @@ export default function EventRegistration() {
             {/* Step 1: Registration Form */}
             {step === 1 && (
               <form onSubmit={handleRegistration} className="space-y-6">
+                {/* ===== NEW: Registration Type Toggle ===== */}
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Race Category *</label>
-                  <select
-                    name="race_category"
-                    value={formData.race_category}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
-                  >
-                    {event?.categories?.map((cat) => (
-                      <option key={cat.name} value={cat.name}>
-                        {cat.name} - RM {cat.price.toFixed(2)}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="block text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Registration Type *</label>
+                  <div className="flex gap-6 bg-slate-50 p-4 rounded-lg border-2 border-slate-200">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="registration_type"
+                        value="individual"
+                        checked={registrationType === 'individual'}
+                        onChange={(e) => setRegistrationType(e.target.value)}
+                        className="w-5 h-5 accent-orange-600 cursor-pointer"
+                      />
+                      <span className="font-semibold text-slate-700">👤 Individual</span>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="registration_type"
+                        value="team"
+                        checked={registrationType === 'team'}
+                        onChange={(e) => setRegistrationType(e.target.value)}
+                        className="w-5 h-5 accent-orange-600 cursor-pointer"
+                      />
+                      <span className="font-semibold text-slate-700">👥 Team (Bulk)</span>
+                    </label>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Registration Type *</label>
-                  <input
-                    type="text"
-                    name="registration_category"
-                    value={formData.registration_category}
-                    onChange={handleChange}
-                    required
-                    placeholder="e.g., Individual, Team"
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
-                  />
-                </div>
+                {/* ===== INDIVIDUAL SECTION ===== */}
+                {registrationType === 'individual' && (
+                  <div className="space-y-6 bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Race Category *</label>
+                      <select
+                        name="race_category"
+                        value={formData.race_category}
+                        onChange={handleChange}
+                        required
+                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
+                      >
+                        {event?.categories?.map((cat) => (
+                          <option key={cat.name} value={cat.name}>
+                            {cat.name} - RM {cat.price.toFixed(2)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Shirt Size *</label>
-                  <select
-                    name="shirt_size"
-                    value={formData.shirt_size}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
-                  >
-                    <option value="XS">XS - Extra Small</option>
-                    <option value="S">S - Small</option>
-                    <option value="M">M - Medium</option>
-                    <option value="L">L - Large</option>
-                    <option value="XL">XL - Extra Large</option>
-                    <option value="XXL">XXL - 2XL</option>
-                  </select>
-                </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Shirt Size *</label>
+                      <select
+                        name="shirt_size"
+                        value={formData.shirt_size}
+                        onChange={handleChange}
+                        required
+                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
+                      >
+                        <option value="XS">XS - Extra Small</option>
+                        <option value="S">S - Small</option>
+                        <option value="M">M - Medium</option>
+                        <option value="L">L - Large</option>
+                        <option value="XL">XL - Extra Large</option>
+                        <option value="XXL">XXL - 2XL</option>
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Emergency Contact *</label>
-                  <input
-                    type="text"
-                    name="emergency_contact"
-                    value={formData.emergency_contact}
-                    onChange={handleChange}
-                    required
-                    placeholder="Phone number"
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
-                  />
-                </div>
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Emergency Contact *</label>
+                      <input
+                        type="text"
+                        name="emergency_contact"
+                        value={formData.emergency_contact}
+                        onChange={handleChange}
+                        required
+                        placeholder="Phone number"
+                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
+                      />
+                    </div>
+                  </div>
+                )}
 
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Team Name (Optional)</label>
-                  <input
-                    type="text"
-                    name="team_name"
-                    value={formData.team_name}
-                    onChange={handleChange}
-                    placeholder="If registering as a team"
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
-                  />
+                {/* ===== TEAM SECTION ===== */}
+                {registrationType === 'team' && (
+                  <div className="space-y-6 bg-green-50 p-6 rounded-lg border-2 border-green-200">
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Organization / Team Name *</label>
+                      <input
+                        type="text"
+                        name="team_name"
+                        value={formData.team_name}
+                        onChange={handleChange}
+                        required
+                        placeholder="Enter your organization or team name"
+                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Select Shirt Sizes *</label>
+                      <div className="grid grid-cols-3 gap-4">
+                        {shirtSizeOptions.map((size) => (
+                          <div key={size} className="flex flex-col items-center bg-white p-4 rounded-lg border-2 border-slate-200">
+                            <p className="text-sm font-bold text-slate-600 mb-3 uppercase">{size}</p>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleShirtSizeChange(size, shirtSizes[size] - 1)}
+                                className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded font-bold transition"
+                              >
+                                −
+                              </button>
+                              <input
+                                type="number"
+                                value={shirtSizes[size]}
+                                onChange={(e) => handleShirtSizeChange(size, parseInt(e.target.value) || 0)}
+                                min="0"
+                                className="w-14 text-center border-2 border-slate-200 rounded py-2 font-bold text-lg"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleShirtSizeChange(size, shirtSizes[size] + 1)}
+                                className="bg-green-500 hover:bg-green-600 text-white w-8 h-8 rounded font-bold transition"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Team Summary */}
+                      <div className="mt-6 bg-white p-4 rounded-lg border-2 border-orange-300">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-sm text-slate-600 font-semibold">Total Participants:</p>
+                            <p className="text-3xl font-black text-blue-600">{calculateTeamSize()}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm text-slate-600 font-semibold">Unit Price:</p>
+                            <p className="text-2xl font-bold text-slate-900">RM {selectedPrice.toFixed(2)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Price Summary */}
+                <div className="bg-gradient-to-br from-orange-100 to-red-100 border-2 border-orange-300 p-6 rounded-xl">
+                  <p className="text-sm font-bold text-slate-700 uppercase mb-2 tracking-wide">Estimated Total</p>
+                  <p className="text-4xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                    RM {calculateTotalPrice().toFixed(2)}
+                  </p>
                 </div>
 
                 <button
@@ -252,10 +395,13 @@ export default function EventRegistration() {
                 <div className="bg-gradient-to-br from-orange-100 to-red-100 border-2 border-orange-300 p-8 rounded-xl">
                   <p className="text-sm font-bold text-slate-700 uppercase mb-3 tracking-wide">Total Amount Due</p>
                   <p className="text-5xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-2">
-                    RM {selectedPrice.toFixed(2)}
+                    RM {calculateTotalPrice().toFixed(2)}
                   </p>
                   <p className="text-sm text-slate-700 font-semibold mt-4">
-                    {formData.race_category} • {formData.registration_category}
+                    {registrationType === 'individual' 
+                      ? `${formData.race_category}` 
+                      : `${formData.team_name} • ${calculateTeamSize()} participants`
+                    }
                   </p>
                 </div>
 
@@ -292,6 +438,14 @@ export default function EventRegistration() {
                   <p className="text-2xl font-mono font-black text-slate-900 bg-white px-4 py-3 rounded-lg border-2 border-orange-300">
                     {ticketData.ticket_code}
                   </p>
+                  
+                  {/* Show ticket type info */}
+                  <div className="mt-6 bg-white p-4 rounded-lg border-2 border-blue-300">
+                    <p className="text-sm font-semibold text-slate-600 mb-2">Registration Type:</p>
+                    <p className="text-lg font-bold text-blue-600">
+                      {ticketData.registration_type === 'individual' ? '👤 Individual' : `👥 Team - ${ticketData.team_size} Participants`}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">

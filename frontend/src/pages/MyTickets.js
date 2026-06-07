@@ -120,16 +120,66 @@ export default function MyTickets() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div className="bg-slate-50 p-3 rounded-lg">
-                        <p className="text-xs font-bold text-slate-500 uppercase mb-1">Race Category</p>
-                        <p className="font-bold text-slate-900">{ticket.registration_id?.race_category}</p>
+                    {/* ===== NEW: Registration Type & Team Info ===== */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                      {/* Registration Type Badge */}
+                      <div className="bg-slate-50 p-4 rounded-lg border-2 border-blue-200">
+                        <p className="text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Registration Type</p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">
+                            {ticket.registration_type === 'individual' ? '👤' : '👥'}
+                          </span>
+                          <p className="font-bold text-slate-900 text-lg capitalize">
+                            {ticket.registration_type}
+                          </p>
+                        </div>
                       </div>
-                      <div className="bg-slate-50 p-3 rounded-lg">
-                        <p className="text-xs font-bold text-slate-500 uppercase mb-1">Registration Type</p>
-                        <p className="font-bold text-slate-900">{ticket.registration_id?.category}</p>
-                      </div>
+
+                      {/* Race Category (Individual only) */}
+                      {ticket.registration_type === 'individual' && (
+                        <div className="bg-slate-50 p-4 rounded-lg border-2 border-green-200">
+                          <p className="text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Race Category</p>
+                          <p className="font-bold text-slate-900 text-lg">
+                            {ticket.registration_id?.race_category || 'N/A'}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Team Size (Team only) */}
+                      {ticket.registration_type === 'team' && (
+                        <div className="bg-slate-50 p-4 rounded-lg border-2 border-purple-200">
+                          <p className="text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Team Size</p>
+                          <p className="font-bold text-slate-900 text-lg">
+                            {ticket.team_size} Participants
+                          </p>
+                        </div>
+                      )}
                     </div>
+
+                    {/* ===== NEW: Shirt Size Breakdown (Team only) ===== */}
+                    {ticket.registration_type === 'team' && ticket.shirt_sizes && Object.keys(ticket.shirt_sizes).length > 0 && (
+                      <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200 mb-4">
+                        <p className="text-xs font-bold text-slate-600 uppercase mb-3 tracking-wide">📊 Shirt Size Distribution</p>
+                        <div className="grid grid-cols-3 gap-3">
+                          {Object.entries(ticket.shirt_sizes).map(([size, qty]) => (
+                            <div key={size} className="bg-white p-3 rounded border border-green-300 text-center">
+                              <p className="text-xs font-bold text-slate-600 uppercase mb-1">{size}</p>
+                              <p className="text-2xl font-black text-green-600">{qty}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Check-in Date */}
+                    {ticket.check_in_status && ticket.check_in_date && (
+                      <div className="bg-green-50 p-3 rounded-lg border-2 border-green-200">
+                        <p className="text-xs font-bold text-slate-600 uppercase mb-1">Checked In</p>
+                        <p className="font-semibold text-green-700">
+                          {new Date(ticket.check_in_date).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* QR Code Section */}
