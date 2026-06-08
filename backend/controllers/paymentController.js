@@ -1,7 +1,10 @@
 const Payment = require('../models/Payment');
 const Registration = require('../models/Registration');
 const Ticket = require('../models/Ticket');
+const Event = require('../models/Event');
+const User = require('../models/User');
 const { generateTicketCode, generateQRCode } = require('../utils/qrcode');
+const { createNotification } = require('./notificationController');
 const crypto = require('crypto');
 
 const processPayment = async (req, res) => {
@@ -36,6 +39,45 @@ const processPayment = async (req, res) => {
     // Update registration status
     registration.registration_status = 'confirmed';
     await registration.save();
+
+    // Create notifications after successful payment
+    try {
+      // Fetch event and participant details
+      const event = await Event.findById(registration.event_id);
+      const participant = await User.findById(registration.user_id);
+
+      if (event && participant) {
+        // Notification 1: Send to participant
+        await createNotification(
+          registration.user_id,
+          'registration_confirmed',
+          'Registration Confirmed',
+          `Your place on ${event.event_name} is confirmed!`,
+          `Congratulations! Your registration for ${event.event_name} has been confirmed.\n\nEvent Details:\n- Date: ${new Date(event.date).toLocaleDateString()}\n- Location: ${event.location}\n- Race Category: ${registration.race_category}\n\nYou will receive your QR ticket shortly. Get ready for an amazing run!`,
+          {
+            eventId: event._id,
+            participantId: registration.user_id,
+          }
+        );
+
+        // Notification 2: Send to organizer
+        await createNotification(
+          event.organizer_id,
+          'participant_joined',
+          'New Participant Registration',
+          `${participant.name} joined ${event.event_name}`,
+          `Great news! A new participant has registered for your event.\n\nParticipant: ${participant.name}\nEvent: ${event.event_name}\nRace Category: ${registration.race_category}\n\nTotal participants are increasing for your event!`,
+          {
+            eventId: event._id,
+            participantId: registration.user_id,
+            organizerId: event.organizer_id,
+          }
+        );
+      }
+    } catch (notificationError) {
+      console.error('Failed to create notifications:', notificationError.message);
+      // Don't fail payment if notification creation fails
+    }
 
     res.status(201).json({
       message: 'Payment processed successfully',

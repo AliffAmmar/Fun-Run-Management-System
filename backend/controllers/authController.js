@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { generateToken } = require('../utils/jwt');
+const { createNotification } = require('./notificationController');
 
 const register = async (req, res) => {
   try {
@@ -24,6 +25,20 @@ const register = async (req, res) => {
       phone_no,
       role: role || 'participant',
     });
+
+    // Create welcome notification
+    try {
+      await createNotification(
+        user._id,
+        'welcome',
+        'Welcome to Run4Fun!',
+        'Welcome to Run4Fun! Explore the amazing features we have and start your running journey with us.',
+        'Welcome to Run4Fun! We are excited to have you on board. You can now:\n\n1. Discover upcoming events in your area\n2. Register for fun runs\n3. Manage your registrations and tickets\n4. Connect with other runners\n\nStart exploring and find your next running adventure!'
+      );
+    } catch (notificationError) {
+      console.error('Failed to create welcome notification:', notificationError.message);
+      // Don't fail registration if notification creation fails
+    }
 
     const token = generateToken(user._id, user.role, user.email);
 

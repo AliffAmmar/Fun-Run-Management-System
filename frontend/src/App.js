@@ -13,6 +13,7 @@ import MyTickets from './pages/MyTickets';
 import CreateEvent from './pages/CreateEvent';
 import ManageEvents from './pages/ManageEvents';
 import EditEvent from './pages/EditEvent';
+import Notifications from './pages/Notifications';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -50,6 +51,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <MyTickets />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Notifications />
             </ProtectedRoute>
           }
         />

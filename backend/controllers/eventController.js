@@ -1,4 +1,6 @@
 const Event = require('../models/Event');
+const User = require('../models/User');
+const { createNotification } = require('./notificationController');
 
 const createEvent = async (req, res) => {
   try {
@@ -156,6 +158,39 @@ const publishEvent = async (req, res) => {
 
     event.status = 'published';
     await event.save();
+
+    // Notify all participants about the new event
+    try {
+      const allParticipants = await User.find({ role: 'participant' });
+
+      // Create notification for each participant
+      const notificationPromises = allParticipants.map((participant) =>
+        createNotification(
+          participant._id,
+          'event_created',
+          'New Event Available',
+          `New event published: ${event.event_name}`,
+          `A new exciting event has been published!\n\nEvent: ${event.event_name}\nDate: ${new Date(event.date).toLocaleDateString()}\nLocation: ${event.location}\n\n${event.description}\n\nCheck it out and register now!`,
+          {
+            eventId: event._id,
+            organizerId: event.organizer_id,
+          }
+        ).catch((notificationError) => {
+          console.error(
+            `Failed to create notification for participant ${participant._id}:`,
+            notificationError.message
+          );
+        })
+      );
+
+      // Wait for all notifications to be created (non-blocking)
+      Promise.all(notificationPromises).catch((err) => {
+        console.error('Error creating notifications:', err.message);
+      });
+    } catch (notificationError) {
+      console.error('Failed to create event notifications:', notificationError.message);
+      // Don't fail event publication if notification creation fails
+    }
 
     res.json({
       message: 'Event published successfully',

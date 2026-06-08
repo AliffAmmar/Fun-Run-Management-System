@@ -1,10 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import apiClient from '../utils/apiClient';
 
 export default function Navigation() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread notification count when user is logged in
+  useEffect(() => {
+    if (user) {
+      fetchUnreadCount();
+      // Refresh unread count every 30 seconds
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const response = await apiClient.get('/notifications/unread-count');
+      setUnreadCount(response.data.unreadCount || 0);
+    } catch (error) {
+      console.error('Failed to fetch unread count:', error);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -25,6 +46,15 @@ export default function Navigation() {
 
           {user ? (
             <>
+              <Link to="/notifications" className="relative hover:text-orange-200 transition duration-300 text-sm uppercase tracking-wide flex items-center gap-2">
+                Notifications
+                {unreadCount > 0 && (
+                  <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </Link>
+
               <Link to="/my-tickets" className="hover:text-orange-200 transition duration-300 text-sm uppercase tracking-wide">
                 Tickets
               </Link>
