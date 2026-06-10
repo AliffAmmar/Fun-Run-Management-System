@@ -72,7 +72,8 @@ export default function Navigation() {
                   </div>
                   {user.name}
                 </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white text-gray-800 rounded-xl shadow-2xl hidden group-hover:block overflow-hidden">
+                <div className="absolute right-0 pt-2 w-48 hidden group-hover:block">
+                <div className="bg-white text-gray-800 rounded-xl shadow-2xl overflow-hidden">
                   <Link to="/profile" className="block px-4 py-3 hover:bg-orange-50 font-medium transition">
                     Profile
                   </Link>
@@ -83,6 +84,7 @@ export default function Navigation() {
                     Logout
                   </button>
                 </div>
+              </div>
               </div>
             </>
           ) : (
