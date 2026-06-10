@@ -94,7 +94,7 @@ export default function EventDetail() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
-                  <div className="text-4xl">📅</div>
+                  <div className="text-4xl"></div>
                   <div>
                     <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Date & Time</p>
                     <p className="text-xl font-bold text-slate-900">{new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
@@ -103,7 +103,7 @@ export default function EventDetail() {
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="text-4xl">📍</div>
+                  <div className="text-4xl"></div>
                   <div>
                     <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Location</p>
                     <p className="text-xl font-bold text-slate-900">{event.location}</p>
@@ -111,7 +111,7 @@ export default function EventDetail() {
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="text-4xl">👥</div>
+                  <div className="text-4xl"></div>
                   <div>
                     <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Available Slots</p>
                     <p className="text-xl font-bold text-slate-900">{event.capacity} Participants</p>
@@ -120,7 +120,7 @@ export default function EventDetail() {
               </div>
 
               <div className="flex items-start gap-4">
-                <div className="text-4xl">👨‍💼</div>
+                <div className="text-4xl"></div>
                 <div>
                   <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Organized By</p>
                   <p className="text-xl font-bold text-slate-900">{event.organizer_id?.name}</p>
@@ -157,7 +157,7 @@ export default function EventDetail() {
                   onClick={() => navigate(`/register/${id}`)}
                   className="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition duration-300 transform hover:scale-105 text-lg uppercase tracking-wide"
                 >
-                  Register Now 🏃
+                  Register Now 
                 </button>
               )}
 

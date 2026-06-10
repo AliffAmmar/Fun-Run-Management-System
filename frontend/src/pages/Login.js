@@ -30,7 +30,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Logo Section */}
         <div className="text-center mb-8">
-          <div className="text-6xl font-black text-white mb-2">🏃</div>
+          <div className="text-6xl font-black text-white mb-2"></div>
           <h1 className="text-4xl font-black text-white mb-2">Run4Fun</h1>
           <p className="text-orange-100 text-lg font-semibold">Experience the Joy of Running</p>
         </div>

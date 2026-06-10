@@ -84,15 +84,15 @@ const Notifications = () => {
   const getNotificationIcon = (type) => {
     switch (type) {
       case 'welcome':
-        return '🎉';
+        return '';
       case 'event_created':
-        return '🆕';
+        return '';
       case 'registration_confirmed':
-        return '✅';
+        return '';
       case 'participant_joined':
-        return '👥';
+        return '';
       default:
-        return '📬';
+        return '';
     }
   };
 

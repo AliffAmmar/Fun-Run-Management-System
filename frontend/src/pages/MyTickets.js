@@ -52,7 +52,7 @@ export default function MyTickets() {
           </div>
         ) : tickets.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center border-t-4 border-orange-500">
-            <div className="text-6xl mb-4">🎫</div>
+            <div className="text-6xl mb-4"></div>
             <p className="text-2xl text-slate-900 font-bold mb-2">No tickets yet</p>
             <p className="text-slate-600 mb-8">Register for events to get your tickets and QR codes</p>
             <button
@@ -127,7 +127,7 @@ export default function MyTickets() {
                         <p className="text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Registration Type</p>
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">
-                            {ticket.registration_type === 'individual' ? '👤' : '👥'}
+                            {ticket.registration_type === 'individual' ? '' : ''}
                           </span>
                           <p className="font-bold text-slate-900 text-lg capitalize">
                             {ticket.registration_type}
@@ -165,7 +165,7 @@ export default function MyTickets() {
                     {/* ===== Shirt Size Breakdown (Team only) ===== */}
                     {ticket.registration_type === 'team' && ticket.shirt_sizes && Object.keys(ticket.shirt_sizes).length > 0 && (
                       <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200 mb-4">
-                        <p className="text-xs font-bold text-slate-600 uppercase mb-3 tracking-wide">📊 Shirt Size Distribution</p>
+                        <p className="text-xs font-bold text-slate-600 uppercase mb-3 tracking-wide">Shirt Size Distribution</p>
                         <div className="grid grid-cols-3 gap-3">
                           {Object.entries(ticket.shirt_sizes).map(([size, qty]) => (
                             <div key={size} className="bg-white p-3 rounded border border-green-300 text-center">

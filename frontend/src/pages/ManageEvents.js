@@ -120,7 +120,7 @@ export default function ManageEvents() {
 
         {events.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center border-t-4 border-orange-500">
-            <div className="text-6xl mb-4">🏃</div>
+            <div className="text-6xl mb-4"></div>
             <p className="text-2xl text-slate-900 font-bold mb-2">No events created yet</p>
             <p className="text-slate-600 mb-8">Start creating amazing running events and build your community</p>
             <button
@@ -194,21 +194,21 @@ export default function ManageEvents() {
                       onClick={() => navigate(`/edit-event/${event._id}`)}
                       className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 font-semibold uppercase tracking-wide"
                     >
-                      ✏️ Edit
+                      Edit
                     </button>
                     {event.status === 'draft' && (
                       <button
                         onClick={() => handlePublishEvent(event._id)}
                         className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 font-semibold uppercase tracking-wide"
                       >
-                        📤 Publish
+                        Publish
                       </button>
                     )}
                     <button
                       onClick={() => handleDeleteEvent(event._id)}
                       className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 font-semibold uppercase tracking-wide"
                     >
-                      🗑️ Delete
+                      Delete
                     </button>
                   </div>
                 </div>

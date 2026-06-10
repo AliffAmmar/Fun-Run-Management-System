@@ -236,7 +236,7 @@ export default function EventRegistration() {
                         onChange={(e) => setRegistrationType(e.target.value)}
                         className="w-5 h-5 accent-orange-600 cursor-pointer"
                       />
-                      <span className="font-semibold text-slate-700">👤 Individual</span>
+                      <span className="font-semibold text-slate-700">Individual</span>
                     </label>
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input
@@ -247,7 +247,7 @@ export default function EventRegistration() {
                         onChange={(e) => setRegistrationType(e.target.value)}
                         className="w-5 h-5 accent-orange-600 cursor-pointer"
                       />
-                      <span className="font-semibold text-slate-700">👥 Team (Bulk)</span>
+                      <span className="font-semibold text-slate-700">Team (Bulk)</span>
                     </label>
                   </div>
                 </div>
@@ -440,7 +440,7 @@ export default function EventRegistration() {
                 </div>
 
                 <div className="bg-slate-50 p-6 rounded-lg border-2 border-slate-200">
-                  <p className="text-slate-700 font-semibold mb-3">🔒 Secure Payment</p>
+                  <p className="text-slate-700 font-semibold mb-3">Secure Payment</p>
                   <p className="text-slate-600 mb-4">
                     Click the button below to complete your payment. This is a mock payment and will be automatically marked as successful.
                   </p>
@@ -451,7 +451,7 @@ export default function EventRegistration() {
                   disabled={submitting}
                   className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition duration-300 disabled:opacity-50 transform hover:scale-105 text-lg uppercase tracking-wide"
                 >
-                  {submitting ? 'Processing Payment...' : '💳 Complete Payment'}
+                  {submitting ? 'Processing Payment...' : 'Complete Payment'}
                 </button>
               </div>
             )}
@@ -477,7 +477,7 @@ export default function EventRegistration() {
                   <div className="mt-6 bg-white p-4 rounded-lg border-2 border-blue-300">
                     <p className="text-sm font-semibold text-slate-600 mb-2">Registration Type:</p>
                     <p className="text-lg font-bold text-blue-600">
-                      {ticketData.registration_type === 'individual' ? '👤 Individual' : `👥 Team - ${ticketData.team_size} Participants`}
+                      {ticketData.registration_type === 'individual' ? 'Individual' : `Team - ${ticketData.team_size} Participants`}
                     </p>
                     <p className="text-sm font-semibold text-slate-600 mt-3 mb-1">Race Category:</p>
                     <p className="text-lg font-bold text-blue-600">

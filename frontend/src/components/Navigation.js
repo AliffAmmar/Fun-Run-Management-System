@@ -36,7 +36,7 @@ export default function Navigation() {
     <nav className="bg-gradient-to-r from-slate-900 via-orange-600 to-red-700 text-white shadow-2xl sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
         <Link to="/" className="text-3xl font-black tracking-tight hover:text-orange-200 transition">
-          🏃 RUN4FUN
+          RUN4FUN
         </Link>
 
         <div className="flex gap-6 items-center font-semibold">

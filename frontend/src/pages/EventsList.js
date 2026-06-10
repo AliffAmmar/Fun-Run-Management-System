@@ -192,15 +192,15 @@ export default function EventsList() {
 
                     <div className="space-y-3 mb-6">
                       <div className="flex items-center gap-2 text-slate-700">
-                        <span className="text-lg">📍</span>
+                        <span className="text-lg"></span>
                         <span className="font-semibold">{event.location}</span>
                       </div>
                       <div className="flex items-center gap-2 text-slate-700">
-                        <span className="text-lg">📅</span>
+                        <span className="text-lg"></span>
                         <span className="font-semibold">{new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                       </div>
                       <div className="flex items-center gap-2 text-slate-700">
-                        <span className="text-lg">🏃</span>
+                        <span className="text-lg"></span>
                         <span className="font-semibold text-sm">{getCategoryNames(event.categories)}</span>
                       </div>
                     </div>

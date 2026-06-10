@@ -106,7 +106,7 @@ export default function LocationAutocomplete({ value, onChange }) {
               } ${idx === suggestions.length - 1 ? 'rounded-b-xl' : ''}`}
             >
               <div className="flex items-center gap-3">
-                <span className="text-lg">📍</span>
+                <span className="text-lg"></span>
                 <div>
                   <p className="font-bold text-slate-900">{suggestion.short_name}</p>
                   <p className="text-sm text-slate-600">{suggestion.display_name.split(',').slice(-2).join(',')}</p>
