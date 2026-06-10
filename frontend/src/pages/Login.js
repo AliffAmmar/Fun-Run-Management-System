@@ -100,7 +100,7 @@ export default function Login() {
 
         {/* Footer Text */}
         <div className="text-center mt-8 text-white">
-          <p className="text-sm opacity-75">Run4Fun © 2024 | All rights reserved</p>
+          <p className="text-sm opacity-75">Run4Fun © 2026 | All rights reserved</p>
         </div>
       </div>
     </div>

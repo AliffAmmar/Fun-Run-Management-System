@@ -55,9 +55,11 @@ export default function Navigation() {
                 )}
               </Link>
 
-              <Link to="/my-tickets" className="hover:text-orange-200 transition duration-300 text-sm uppercase tracking-wide">
-                Tickets
-              </Link>
+              {user.role !== 'organizer' && (
+                <Link to="/my-tickets" className="hover:text-orange-200 transition duration-300 text-sm uppercase tracking-wide">
+                  Tickets
+                </Link>
+              )}
 
               {user.role === 'organizer' && (
                 <Link to="/manage-events" className="hover:text-orange-200 transition duration-300 text-sm uppercase tracking-wide">
