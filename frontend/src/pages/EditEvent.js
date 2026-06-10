@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 
-const CATEGORY_OPTIONS = ['5K', '10K', 'Half Marathon', 'Marathon', 'Family Run'];
+const CATEGORY_OPTIONS = ['1km', '3km', '5km', '10km'];
 
 export default function EditEvent() {
   const navigate = useNavigate();

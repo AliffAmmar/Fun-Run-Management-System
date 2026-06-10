@@ -23,7 +23,7 @@ const eventSchema = new mongoose.Schema(
       {
         name: {
           type: String,
-          enum: ['5K', '10K', 'Half Marathon', 'Marathon', 'Family Run'],
+          enum: ['1km', '3km', '5km', '10km'],
           required: true,
         },
         price: {

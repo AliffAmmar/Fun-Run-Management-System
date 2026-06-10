@@ -133,11 +133,10 @@ export default function EventsList() {
                 className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition"
               >
                 <option value="">All Categories</option>
-                <option value="5K">5K</option>
-                <option value="10K">10K</option>
-                <option value="Half Marathon">Half Marathon</option>
-                <option value="Marathon">Marathon</option>
-                <option value="Family Run">Family Run</option>
+                <option value="1km">1km</option>
+                <option value="3km">3km</option>
+                <option value="5km">5km</option>
+                <option value="10km">10km</option>
               </select>
             </div>
           </div>
@@ -211,10 +210,6 @@ export default function EventsList() {
                         <p className="text-2xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
                           RM {getLowestPrice(event.categories).toFixed(2)}
                         </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-slate-500 font-semibold">Available</p>
-                        <p className="text-lg font-black text-slate-900">{event.capacity} slots</p>
                       </div>
                     </div>
                   </div>

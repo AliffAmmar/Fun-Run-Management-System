@@ -113,7 +113,7 @@ export default function EventDetail() {
                 <div className="flex items-start gap-4">
                   <div className="text-4xl"></div>
                   <div>
-                    <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Available Slots</p>
+                    <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">Slots</p>
                     <p className="text-xl font-bold text-slate-900">{event.capacity} Participants</p>
                   </div>
                 </div>
