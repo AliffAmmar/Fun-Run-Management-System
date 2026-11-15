@@ -1,6 +1,9 @@
 const Event = require('../models/Event');
 const User = require('../models/User');
 const { createNotification } = require('./notificationController');
+const mongoose = require('mongoose');
+const Order = require('../models/Order');
+const { escapeRegex } = require('../utils/regex');
 
 const createEvent = async (req, res) => {
   try {
@@ -99,35 +102,81 @@ const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
 
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
     const event = await Event.findById(id).populate('organizer_id', 'name email');
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
+    // Drafts are visible only to their organizer (or an admin).
+    const isOwner =
+      req.user && (req.user.role === 'admin' || String(event.organizer_id?._id || event.organizer_id) === String(req.user.userId));
+    if (event.status === 'draft' && !isOwner) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
 
-    res.json({ event });
+    const [withAvailability] = await addAvailability([event.toObject()]);
+    res.json({ event: withAvailability });
   } catch (error) {
     res.status(500).json({ message: 'Failed to get event', error: error.message });
   }
 };
 
+// Adds `sold_out` and `is_past` to each event. Only a yes/no is exposed (no slot numbers,
+// as agreed). Slots held = paid orders + unpaid orders still within their 30-minute hold.
+async function addAvailability(events) {
+  if (events.length === 0) return events;
+  const now = new Date();
+  const held = await Order.aggregate([
+    {
+      $match: {
+        event_id: { $in: events.map((e) => e._id) },
+        $or: [{ status: 'paid' }, { status: 'pending', expires_at: { $gt: now } }],
+      },
+    },
+    { $group: { _id: '$event_id', total: { $sum: '$participant_count' } } },
+  ]);
+  const heldBy = new Map(held.map((h) => [String(h._id), h.total]));
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  return events.map((e) => ({
+    ...e,
+    sold_out: (heldBy.get(String(e._id)) || 0) >= e.capacity,
+    is_past: new Date(e.date) < startOfToday,
+  }));
+}
+
 const getAllEvents = async (req, res) => {
   try {
-    const { location, category, search } = req.query;
-    let filter = { status: 'published' };
+    const { location, category, search, when } = req.query;
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
 
+    // ?when=past → events that already took place (incl. completed), newest first.
+    // Default (upcoming) → published events from today on, soonest first.
+    const past = when === 'past';
+    const filter = past
+      ? { status: { $in: ['published', 'closed', 'completed'] }, date: { $lt: startOfToday } }
+      : { status: 'published', date: { $gte: startOfToday } };
+
+    // User input is escaped so it is matched literally (no regex injection / crashes).
     if (location) {
-      filter.location = { $regex: location, $options: 'i' };
+      filter.location = { $regex: escapeRegex(String(location).slice(0, 100)), $options: 'i' };
     }
     if (category) {
-      filter.categories = { $elemMatch: { name: category } };
+      filter.categories = { $elemMatch: { name: String(category) } };
     }
     if (search) {
-      filter.event_name = { $regex: search, $options: 'i' };
+      filter.event_name = { $regex: escapeRegex(String(search).slice(0, 100)), $options: 'i' };
     }
 
-    const events = await Event.find(filter).populate('organizer_id', 'name email');
+    const events = await Event.find(filter)
+      .sort({ date: past ? -1 : 1 })
+      .populate('organizer_id', 'name email')
+      .lean();
 
-    res.json({ events });
+    res.json({ events: await addAvailability(events) });
   } catch (error) {
     res.status(500).json({ message: 'Failed to get events', error: error.message });
   }

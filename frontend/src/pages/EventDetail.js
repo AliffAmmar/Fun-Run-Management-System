@@ -19,21 +19,20 @@ export default function EventDetail() {
   ];
 
   useEffect(() => {
+    const fetchEvent = async () => {
+      try {
+        setLoading(true);
+        const response = await apiClient.get(`/events/${id}`);
+        setEvent(response.data.event);
+      } catch (err) {
+        setError('Failed to load event');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchEvent();
   }, [id]);
-
-  const fetchEvent = async () => {
-    try {
-      setLoading(true);
-      const response = await apiClient.get(`/events/${id}`);
-      setEvent(response.data.event);
-    } catch (err) {
-      setError('Failed to load event');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -55,6 +54,15 @@ export default function EventDetail() {
       </div>
     );
   }
+
+  // Why registration is not possible (null = open). The server enforces the same rules.
+  const registrationClosedReason = event.is_past
+    ? 'This event has taken place'
+    : event.status !== 'published'
+      ? 'Registration closed'
+      : event.sold_out
+        ? 'Sold out'
+        : null;
 
   return (
     <div className="bg-gradient-to-b from-slate-50 via-white to-orange-50 min-h-screen pb-12">
@@ -152,18 +160,25 @@ export default function EventDetail() {
 
             {/* Registration Button */}
             <div className="flex gap-4">
-              {user && user.role !== 'organizer' && (
-                <button
-                  onClick={() => navigate(`/register/${id}`)}
-                  className="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition duration-300 transform hover:scale-105 text-lg uppercase tracking-wide"
-                >
-                  Register Now 
-                </button>
+              {/* Closed for registration: past, completed/closed, or sold out */}
+              {registrationClosedReason ? (
+                <div className="flex-1 bg-slate-100 text-slate-700 font-black py-4 px-8 rounded-xl text-lg uppercase tracking-wide text-center">
+                  {registrationClosedReason}
+                </div>
+              ) : (
+                user && user.role !== 'organizer' && (
+                  <button
+                    onClick={() => navigate(`/register/${id}`)}
+                    className="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition duration-300 transform hover:scale-105 text-lg uppercase tracking-wide"
+                  >
+                    Register Now
+                  </button>
+                )
               )}
 
-              {!user && (
+              {!user && !registrationClosedReason && (
                 <button
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/login', { state: { from: `/event/${id}` } })}
                   className="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition duration-300 transform hover:scale-105 text-lg uppercase tracking-wide"
                 >
                   Login to Register

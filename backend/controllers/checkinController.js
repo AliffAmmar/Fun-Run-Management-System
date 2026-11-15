@@ -9,6 +9,7 @@ const Participant = require('../models/Participant');
 const Event = require('../models/Event');
 const User = require('../models/User');
 const CheckinLog = require('../models/CheckinLog');
+const { escapeRegex } = require('../utils/regex');
 
 const ACTIONS = {
   collect: { flag: 'kit_collected', at: 'kit_collected_at', by: 'kit_collected_by', log: 'kit_collected', label: 'Kit' },
@@ -16,7 +17,6 @@ const ACTIONS = {
 };
 const MIN_REASON_LENGTH = 3;
 
-const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const canWork = (event, user) =>
   user.role === 'admin' || (event && String(event.organizer_id) === String(user.userId));
 

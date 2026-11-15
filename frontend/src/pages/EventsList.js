@@ -11,6 +11,7 @@ export default function EventsList() {
     location: '',
     category: '',
     search: '',
+    when: 'upcoming', // 'upcoming' (default) | 'past'
   });
   const { user } = useAuth();
 
@@ -22,27 +23,27 @@ export default function EventsList() {
   ];
 
   useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (filters.location) params.append('location', filters.location);
+        if (filters.category) params.append('category', filters.category);
+        if (filters.search) params.append('search', filters.search);
+        if (filters.when === 'past') params.append('when', 'past');
+
+        const response = await apiClient.get(`/events?${params.toString()}`);
+        setEvents(response.data.events);
+        setError('');
+      } catch (err) {
+        setError('Failed to fetch events');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchEvents();
   }, [filters]);
-
-  const fetchEvents = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (filters.location) params.append('location', filters.location);
-      if (filters.category) params.append('category', filters.category);
-      if (filters.search) params.append('search', filters.search);
-
-      const response = await apiClient.get(`/events?${params.toString()}`);
-      setEvents(response.data.events);
-      setError('');
-    } catch (err) {
-      setError('Failed to fetch events');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -83,10 +84,33 @@ export default function EventsList() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 pb-16">
-        <div className="flex justify-between items-center mb-12">
+        <div className="flex flex-wrap gap-4 justify-between items-center mb-12">
           <div>
-            <h2 className="text-4xl font-black text-slate-900 mb-2">Upcoming Events</h2>
-            <p className="text-lg text-slate-600">Discover and register for the best running events</p>
+            <h2 className="text-4xl font-black text-slate-900 mb-2">
+              {filters.when === 'past' ? 'Past Events' : 'Upcoming Events'}
+            </h2>
+            <p className="text-lg text-slate-600">
+              {filters.when === 'past' ? 'Events that already took place' : 'Discover and register for the best running events'}
+            </p>
+            <div className="inline-flex mt-4 bg-slate-100 rounded-full p-1" role="tablist" aria-label="Upcoming or past events">
+              {[
+                ['upcoming', 'Upcoming'],
+                ['past', 'Past events'],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={filters.when === value}
+                  onClick={() => setFilters((prev) => ({ ...prev, when: value }))}
+                  className={`px-5 py-2 rounded-full text-sm font-bold transition ${
+                    filters.when === value ? 'bg-white shadow text-orange-700' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           {user && user.role === 'organizer' && (
             <Link
@@ -180,6 +204,17 @@ export default function EventsList() {
                     <div className="absolute top-4 right-4 bg-gradient-to-r from-orange-500 to-red-600 text-white px-4 py-2 rounded-full text-sm font-bold">
                       {event.categories?.length || 0} categories
                     </div>
+                    {event.is_past ? (
+                      <div className="absolute top-4 left-4 bg-slate-800 text-white px-4 py-2 rounded-full text-sm font-bold">
+                        Took place
+                      </div>
+                    ) : (
+                      event.sold_out && (
+                        <div className="absolute top-4 left-4 bg-red-600 text-white px-4 py-2 rounded-full text-sm font-black uppercase tracking-wide">
+                          Sold out
+                        </div>
+                      )
+                    )}
                   </div>
 
                   {/* Content */}

@@ -8,13 +8,13 @@ const {
   getOrganizerEvents,
   publishEvent,
 } = require('../controllers/eventController');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, optionalAuthMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Public routes
 router.get('/', getAllEvents);
-router.get('/:id', getEventById);
+router.get('/:id', optionalAuthMiddleware, getEventById); // drafts only for their organizer/admin
 
 // Protected routes - organizers can create, update, delete their own events
 router.post('/', authMiddleware, createEvent);

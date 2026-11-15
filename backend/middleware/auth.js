@@ -24,4 +24,18 @@ const adminMiddleware = (req, res, next) => {
   }
 };
 
-module.exports = { authMiddleware, adminMiddleware };
+// For public routes that show more to a logged-in user (e.g. an organizer seeing their own draft).
+// Sets req.user when a valid token is sent; otherwise continues anonymously (never rejects).
+const optionalAuthMiddleware = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (token) {
+    try {
+      req.user = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (error) {
+      // invalid/expired token: treat as anonymous
+    }
+  }
+  next();
+};
+
+module.exports = { authMiddleware, adminMiddleware, optionalAuthMiddleware };
