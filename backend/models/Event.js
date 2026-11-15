@@ -48,6 +48,18 @@ const eventSchema = new mongoose.Schema(
       default: 'draft',
     },
     completed_at: Date,
+    // Last moment buyers can still edit runner names / shirt sizes (kit preparation starts).
+    // Optional: when empty, 7 days before the event (see utils/editWindow.js).
+    kit_cutoff_date: {
+      type: Date,
+      default: null,
+      validate: {
+        validator(v) {
+          return !v || !this.date || v <= this.date;
+        },
+        message: 'Kit preparation cutoff must be before the event date',
+      },
+    },
     // ---- Certificates (see controllers/certificateController.js) ----
     // Who gets a certificate. Undecided with the collaborator, so it's a per-event setting.
     certificate_eligibility: {

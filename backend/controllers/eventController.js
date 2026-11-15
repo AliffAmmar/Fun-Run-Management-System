@@ -7,11 +7,14 @@ const { escapeRegex } = require('../utils/regex');
 
 const createEvent = async (req, res) => {
   try {
-    const { event_name, description, date, location, categories, capacity } = req.body;
+    const { event_name, description, date, location, categories, capacity, kit_cutoff_date } = req.body;
 
     // Validate that at least one category is provided
     if (!categories || categories.length === 0) {
       return res.status(400).json({ message: 'Please provide at least one category with price' });
+    }
+    if (kit_cutoff_date && date && new Date(kit_cutoff_date) > new Date(date)) {
+      return res.status(400).json({ message: 'Kit preparation cutoff must be before the event date' });
     }
 
     const event = await Event.create({
@@ -21,6 +24,7 @@ const createEvent = async (req, res) => {
       location,
       categories,
       capacity,
+      kit_cutoff_date: kit_cutoff_date || null,
       organizer_id: req.user.userId,
       status: 'draft',
     });
@@ -37,7 +41,7 @@ const createEvent = async (req, res) => {
 const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    const { event_name, description, date, location, categories, capacity, status } = req.body;
+    const { event_name, description, date, location, categories, capacity, status, kit_cutoff_date } = req.body;
 
     const event = await Event.findById(id);
     if (!event) {
@@ -54,6 +58,12 @@ const updateEvent = async (req, res) => {
       return res.status(400).json({ message: 'Please provide at least one category with price' });
     }
 
+    // Kit preparation cutoff (optional) must not be after the event.
+    const newDate = date ? new Date(date) : event.date;
+    if (kit_cutoff_date && new Date(kit_cutoff_date) > newDate) {
+      return res.status(400).json({ message: 'Kit preparation cutoff must be before the event date' });
+    }
+
     const updatedEvent = await Event.findByIdAndUpdate(
       id,
       { 
@@ -63,7 +73,9 @@ const updateEvent = async (req, res) => {
         location, 
         categories, 
         capacity, 
-        status 
+        status,
+        // '' or null clears it (back to the default: 7 days before the event)
+        ...(kit_cutoff_date !== undefined && { kit_cutoff_date: kit_cutoff_date || null }),
       },
       { new: true }
     );

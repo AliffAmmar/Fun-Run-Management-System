@@ -5,6 +5,7 @@ import apiClient from '../../utils/apiClient';
 import { checkinUrl } from '../../utils/links';
 import { downloadFile, blobErrorMessage } from '../../utils/download';
 import ShirtSizeSummary from '../registration/ShirtSizeSummary';
+import EditRunners from './EditRunners';
 
 const money = (n) => `RM ${Number(n || 0).toFixed(2)}`;
 const fmtDate = (d) => new Date(d).toLocaleDateString('en-MY', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
@@ -25,6 +26,7 @@ const BADGE_TEXT = { paid: 'Paid', pending: 'Awaiting payment', expired: 'Expire
 
 export default function OrderCard({ order, paymentMode, onShowQr, onChanged, highlighted, now }) {
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [error, setError] = useState('');
   const event = order.event_id || {};
   const status = displayStatus(order, now);
@@ -45,6 +47,8 @@ export default function OrderCard({ order, paymentMode, onShowQr, onChanged, hig
   };
   const pay = () => act(() => apiClient.post(`/payments/orders/${order.order_no}/mock`, {}));
   const withCerts = (order.participants || []).filter((p) => p.certificate_no);
+  // Names / shirt sizes can be corrected until the kit preparation cutoff (server re-checks).
+  const canEdit = ['paid', 'pending'].includes(status) && order.edit_until && now <= new Date(order.edit_until);
   const download = async (path, filename) => {
     setError('');
     try {
@@ -123,6 +127,15 @@ export default function OrderCard({ order, paymentMode, onShowQr, onChanged, hig
               </p>
             )
           )}
+
+          {canEdit &&
+            (editing ? (
+              <EditRunners order={order} onSaved={() => onChanged()} onClose={() => setEditing(false)} />
+            ) : (
+              <button onClick={() => setEditing(true)} className="text-sm font-bold text-orange-600 hover:underline">
+                ✎ Fix a name or shirt size
+              </button>
+            ))}
 
           {/* Certificates (after the organizer completes the event) */}
           {withCerts.length > 0 && (

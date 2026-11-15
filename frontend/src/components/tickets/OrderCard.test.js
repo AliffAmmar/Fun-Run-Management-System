@@ -87,3 +87,8 @@ test('after the event is completed, a group order offers each certificate and a 
 test('no certificate section before the event is completed', () => {
   expect(render({ ...base, status: 'paid' })).not.toMatch('Certificates are ready');
 });
+
+test('shows "Fix a name or shirt size" only before the edit deadline', () => {
+  expect(render({ ...base, status: 'paid', edit_until: '2027-01-05T00:00:00Z' })).toMatch('Fix a name or shirt size');
+  expect(render({ ...base, status: 'paid', edit_until: '2026-12-31T00:00:00Z' })).not.toMatch('Fix a name or shirt size');
+});

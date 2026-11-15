@@ -5,6 +5,7 @@ const {
   getOrderByNo,
   cancelOrder,
   getOrdersByEvent,
+  updateParticipant,
 } = require('../controllers/orderController');
 const { authMiddleware } = require('../middleware/auth');
 
@@ -17,5 +18,6 @@ router.get('/my-orders', authMiddleware, getMyOrders);
 router.get('/event/:event_id', authMiddleware, getOrdersByEvent);
 router.get('/:order_no', authMiddleware, getOrderByNo);
 router.delete('/:order_no', authMiddleware, cancelOrder);
+router.patch('/:order_no/participants/:participantId', authMiddleware, updateParticipant);
 
 module.exports = router;

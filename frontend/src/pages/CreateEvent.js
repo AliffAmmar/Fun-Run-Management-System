@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
+import { fromLocalInputValue } from '../utils/dates';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 
 const CATEGORY_OPTIONS = ['1km', '3km', '5km', '10km'];
@@ -15,10 +16,11 @@ export default function CreateEvent() {
     date: '',
     location: '',
     capacity: '',
+    kit_cutoff_date: '',
     categories: [],
   });
 
-  const [currentCategory, setCurrentCategory] = useState('5K');
+  const [currentCategory, setCurrentCategory] = useState(CATEGORY_OPTIONS[2]); // '5km'; was '5K', which the server rejects
   const [currentPrice, setCurrentPrice] = useState('');
 
   // Get today's date in the format required for datetime-local input (using local timezone)
@@ -108,10 +110,11 @@ export default function CreateEvent() {
       const response = await apiClient.post('/events', {
         event_name: formData.event_name,
         description: formData.description,
-        date: formData.date,
+        date: fromLocalInputValue(formData.date), // with timezone, so the server can't misread it
         location: formData.location,
         categories: formData.categories,
         capacity: parseInt(formData.capacity),
+        kit_cutoff_date: fromLocalInputValue(formData.kit_cutoff_date),
       });
 
       await apiClient.post(`/events/${response.data.event._id}/publish`);
@@ -209,6 +212,24 @@ export default function CreateEvent() {
                   className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
                   placeholder="Number of participants"
                 />
+              </div>
+
+              <div>
+                <label htmlFor="kit_cutoff_date" className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                  Kit preparation cutoff (optional)
+                </label>
+                <input
+                  id="kit_cutoff_date"
+                  type="datetime-local"
+                  name="kit_cutoff_date"
+                  value={formData.kit_cutoff_date}
+                  onChange={handleChange}
+                  max={formData.date || undefined}
+                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition"
+                />
+                <p className="text-sm text-slate-500 mt-1">
+                  Last moment runners can change names and shirt sizes. Leave empty for 7 days before the event.
+                </p>
               </div>
             </div>
 

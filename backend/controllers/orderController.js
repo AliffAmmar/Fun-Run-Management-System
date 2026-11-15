@@ -8,6 +8,7 @@ const Event = require('../models/Event');
 const Certificate = require('../models/Certificate');
 const { nextOrderNo } = require('../utils/numbering');
 const { validateParticipants, findDuplicateEmailWarnings } = require('../utils/orderValidation');
+const { editDeadline } = require('../utils/editWindow');
 
 const isAdmin = (user) => user.role === 'admin';
 const isEventOrganizer = (event, user) =>
@@ -52,8 +53,11 @@ async function withParticipants(orders) {
   const result = list.map((o) => {
     const obj = o.toObject ? o.toObject() : o;
     const ps = byOrder.get(String(o._id)) || [];
+    const ev = obj.event_id && obj.event_id.date ? obj.event_id : null;
     return {
       ...obj,
+      // Until when the buyer may still edit runner names / shirt sizes (null if event not loaded).
+      edit_until: ev ? editDeadline(ev) : null,
       is_expired: obj.status === 'pending' && new Date(obj.expires_at) <= new Date(),
       participants: ps,
       shirt_sizes: shirtSizeBreakdown(ps),
@@ -214,7 +218,7 @@ const getMyOrders = async (req, res) => {
   try {
     const orders = await Order.find({ user_id: req.user.userId })
       .sort({ createdAt: -1 })
-      .populate('event_id', 'event_name date location status categories');
+      .populate('event_id', 'event_name date location status categories kit_cutoff_date');
     res.json({ orders: await withParticipants(orders) });
   } catch (error) {
     res.status(500).json({ message: 'Failed to get registrations', error: error.message });
@@ -225,7 +229,7 @@ const getMyOrders = async (req, res) => {
 const getOrderByNo = async (req, res) => {
   try {
     const order = await Order.findOne({ order_no: req.params.order_no })
-      .populate('event_id', 'event_name date location status organizer_id categories')
+      .populate('event_id', 'event_name date location status organizer_id categories kit_cutoff_date')
       .populate('user_id', 'name email phone_no');
     if (!order) return res.status(404).json({ message: 'Registration not found' });
 
@@ -295,4 +299,68 @@ const getOrdersByEvent = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, getMyOrders, getOrderByNo, cancelOrder, getOrdersByEvent };
+// PATCH /api/orders/:order_no/participants/:participantId   { name?, shirt_size? }
+// Correct a runner's name or shirt size after registering (no adding/removing runners).
+//   buyer:              until the kit preparation cutoff (default 7 days before the event), and
+//                       shirt size only while the kits are not yet collected
+//   organizer / admin:  any time (e.g. fixing a name at the counter)
+const updateParticipant = async (req, res) => {
+  try {
+    const order = await Order.findOne({ order_no: req.params.order_no });
+    if (!order) return res.status(404).json({ message: 'Registration not found' });
+    const event = await Event.findById(order.event_id);
+    const staff = isAdmin(req.user) || isEventOrganizer(event, req.user);
+    if (!staff && !isBuyer(order, req.user)) {
+      return res.status(403).json({ message: 'Not authorized to edit this registration' });
+    }
+
+    const expired = order.status === 'pending' && order.expires_at <= new Date();
+    if (order.status === 'cancelled' || expired) {
+      return res.status(400).json({ message: 'This registration is no longer active' });
+    }
+
+    if (!mongoose.isValidObjectId(req.params.participantId)) {
+      return res.status(404).json({ message: 'Runner not found in this registration' });
+    }
+    const participant = await Participant.findOne({ _id: req.params.participantId, order_id: order._id });
+    if (!participant) return res.status(404).json({ message: 'Runner not found in this registration' });
+
+    const { name, shirt_size } = req.body || {};
+    if (name === undefined && shirt_size === undefined) {
+      return res.status(400).json({ message: 'Nothing to change' });
+    }
+
+    if (!staff) {
+      const deadline = editDeadline(event);
+      if (new Date() > deadline) {
+        return res.status(403).json({
+          message: `Changes closed on ${deadline.toLocaleDateString('en-MY', { dateStyle: 'long' })}. Please contact the organizer.`,
+        });
+      }
+      if (shirt_size !== undefined && order.kit_collected) {
+        return res.status(400).json({ message: 'Kits were already collected, so shirt sizes can no longer change' });
+      }
+    }
+
+    // Same rules as at registration.
+    const { participants, errors } = validateParticipants([
+      { name: name !== undefined ? name : participant.name, shirt_size: shirt_size !== undefined ? shirt_size : participant.shirt_size },
+    ]);
+    if (errors.length > 0) {
+      return res.status(400).json({ message: errors.map((e) => e.message.replace(/^Row 1: /, '')).join('. '), errors });
+    }
+    participant.name = participants[0].name;
+    participant.shirt_size = participants[0].shirt_size;
+    await participant.save();
+
+    const updated = await Order.findById(order._id).populate(
+      'event_id',
+      'event_name date location status categories kit_cutoff_date'
+    );
+    res.json({ message: 'Runner updated', order: await withParticipants(updated) });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update runner', error: error.message });
+  }
+};
+
+module.exports = { createOrder, getMyOrders, getOrderByNo, cancelOrder, getOrdersByEvent, updateParticipant };
