@@ -68,6 +68,15 @@ export default function EventRegistration() {
 
   const [order, setOrder] = useState(null);
   const [warnings, setWarnings] = useState([]);
+  const [paymentMode, setPaymentMode] = useState(null);
+  const [paying, setPaying] = useState(false);
+
+  useEffect(() => {
+    apiClient
+      .get('/payments/config')
+      .then((res) => setPaymentMode(res.data.mode))
+      .catch(() => setPaymentMode(null));
+  }, []);
 
   useEffect(() => {
     apiClient
@@ -174,6 +183,21 @@ export default function EventRegistration() {
       }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Demo payment (PAYMENT_MODE=mock). The server charges order.total_amount, never a client value.
+  const payMock = async (simulate) => {
+    setPaying(true);
+    setError('');
+    try {
+      await apiClient.post(`/payments/orders/${order.order_no}/mock`, simulate ? { simulate } : {});
+      const res = await apiClient.get(`/orders/${order.order_no}`); // reload with bib numbers
+      setOrder(res.data.order);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Payment failed. Please try again.');
+    } finally {
+      setPaying(false);
     }
   };
 
@@ -518,7 +542,46 @@ export default function EventRegistration() {
                   </div>
                 )}
 
-                {step === 'done' && order && (
+                {step === 'done' && order?.status === 'paid' && (
+                  <div className="space-y-6">
+                    <div className="bg-green-100 border-2 border-green-500 text-green-800 p-5 rounded-xl">
+                      <p className="font-black text-lg">✓ Payment successful: you're registered!</p>
+                      <p className="font-semibold">
+                        Order {order.order_no} · {money(order.total_amount)}
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-xl p-5">
+                      <p className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-3">
+                        {order.participant_count === 1 ? 'Bib number' : `Bib numbers (${order.participant_count} runners)`}
+                      </p>
+                      <ul className="divide-y divide-slate-200 max-h-80 overflow-y-auto">
+                        {order.participants?.map((p) => (
+                          <li key={p._id} className="flex justify-between py-2">
+                            <span className="text-slate-800">{p.name}</span>
+                            <span className="font-mono font-black text-orange-700">{p.bib_number}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <p className="text-slate-600 text-sm">
+                      Your QR code for kit collection will be in My Tickets.
+                      {order.type === 'group' && ' One QR covers the whole group: the leader collects all kits.'}
+                    </p>
+
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button onClick={() => navigate('/my-tickets')} className={`flex-1 ${primaryBtn}`}>
+                        My Tickets
+                      </button>
+                      <button onClick={() => navigate('/events')} className={`flex-1 ${secondaryBtn}`}>
+                        Browse more events
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {step === 'done' && order && order.status !== 'paid' && (
                   <div className="space-y-6">
                     <div className="bg-green-100 border-2 border-green-500 text-green-800 p-5 rounded-xl">
                       <p className="font-black text-lg">Registration saved: {order.order_no}</p>
@@ -544,10 +607,34 @@ export default function EventRegistration() {
                       <p className="text-4xl font-black text-orange-700">{money(order.total_amount)}</p>
                     </div>
 
-                    {/* TODO(payment step): replace with "Pay now" (mock / Stripe Checkout). */}
-                    <div className="bg-slate-50 border-2 border-slate-200 p-5 rounded-xl text-slate-700">
-                      Online payment for this registration is coming in the next update.
-                    </div>
+                    {paymentMode === 'mock' ? (
+                      <div className="space-y-3">
+                        <div className="bg-slate-50 border-2 border-slate-200 p-4 rounded-xl text-slate-700 text-sm">
+                          <span className="font-bold">Demo payment.</span> No real money is charged.
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => payMock()}
+                          disabled={paying}
+                          className={`w-full ${primaryBtn}`}
+                        >
+                          {paying ? 'Processing…' : `Pay ${money(order.total_amount)}`}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => payMock('fail')}
+                          disabled={paying}
+                          className="w-full text-sm text-slate-500 hover:text-slate-700 underline"
+                        >
+                          Simulate a failed payment
+                        </button>
+                      </div>
+                    ) : (
+                      // TODO(stripe): redirect to Stripe Checkout when PAYMENT_MODE=stripe.
+                      <div className="bg-slate-50 border-2 border-slate-200 p-5 rounded-xl text-slate-700">
+                        Online payment is not available yet.
+                      </div>
+                    )}
 
                     <div className="flex flex-col sm:flex-row gap-3">
                       <button onClick={() => navigate('/events')} className={`flex-1 ${secondaryBtn}`}>
