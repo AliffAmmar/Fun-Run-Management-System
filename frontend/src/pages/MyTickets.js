@@ -1,40 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
+import OrderCard, { displayStatus } from '../components/tickets/OrderCard';
+import QrModal from '../components/tickets/QrModal';
 
+// The buyer's registrations (orders): one card + one QR per order.
+// /my-tickets?order=FR-1012 scrolls to and highlights that order (used when a buyer opens their
+// own check-in QR link).
 export default function MyTickets() {
-  const [tickets, setTickets] = useState([]);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const focusOrder = searchParams.get('order');
+
+  const [orders, setOrders] = useState([]);
+  const [paymentMode, setPaymentMode] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
+  const [qrOrder, setQrOrder] = useState(null);
+  const [showInactive, setShowInactive] = useState(false);
+  const [now, setNow] = useState(() => new Date());
 
-  useEffect(() => {
-    fetchTickets();
-  }, []);
-
-  const fetchTickets = async () => {
+  const load = useCallback(async () => {
     try {
-      setLoading(true);
-      const response = await apiClient.get('/tickets/my-tickets');
-      setTickets(response.data.tickets);
+      const res = await apiClient.get('/orders/my-orders');
+      setOrders(res.data.orders);
+      setError('');
     } catch (err) {
-      setError('Failed to load tickets');
-      console.error(err);
+      setError('Failed to load your tickets');
     } finally {
       setLoading(false);
+      setNow(new Date());
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    load();
+    apiClient
+      .get('/payments/config')
+      .then((res) => setPaymentMode(res.data.mode))
+      .catch(() => setPaymentMode(null));
+  }, [load]);
+
+  // Keep "held for N minutes" and expiry up to date.
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    if (!loading && focusOrder) document.getElementById(focusOrder)?.scrollIntoView({ behavior: 'smooth' });
+  }, [loading, focusOrder]);
+
+  const isPast = (o) => o.event_id?.date && new Date(o.event_id.date) < now;
+  const sections = [
+    {
+      title: 'Awaiting payment',
+      items: orders.filter((o) => displayStatus(o, now) === 'pending'),
+    },
+    {
+      title: 'Upcoming',
+      items: orders
+        .filter((o) => displayStatus(o, now) === 'paid' && !isPast(o))
+        .sort((a, b) => new Date(a.event_id?.date) - new Date(b.event_id?.date)),
+    },
+    {
+      title: 'Past events',
+      items: orders.filter((o) => displayStatus(o, now) === 'paid' && isPast(o)),
+    },
+  ];
+  const inactive = orders.filter((o) => ['expired', 'cancelled'].includes(displayStatus(o, now)));
+  const hasActive = sections.some((s) => s.items.length > 0);
 
   return (
-    <div className="bg-gradient-to-b from-slate-50 via-white to-orange-50 min-h-screen py-12 px-6">
+    <div className="bg-gradient-to-b from-slate-50 via-white to-orange-50 min-h-screen py-8 sm:py-12 px-4 sm:px-6">
       <div className="max-w-5xl mx-auto">
-        <button onClick={() => navigate(-1)} className="text-orange-600 hover:text-orange-700 font-bold mb-8 inline-block text-lg">
-          ← Back
-        </button>
-
-        <div className="mb-12">
-          <h1 className="text-4xl font-black text-slate-900 mb-2">My Tickets</h1>
-          <p className="text-lg text-slate-600">Your registered events and QR codes</p>
+        <div className="mb-8">
+          <h1 className="text-3xl sm:text-4xl font-black text-slate-900 mb-2">My Tickets</h1>
+          <p className="text-slate-600">Your registrations, bib numbers and QR codes for kit collection</p>
         </div>
 
         {error && (
@@ -45,170 +87,73 @@ export default function MyTickets() {
 
         {loading ? (
           <div className="text-center py-16">
-            <div className="inline-block">
-              <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin mb-4"></div>
-              <p className="text-slate-600 font-semibold">Loading your tickets...</p>
-            </div>
+            <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-600 font-semibold">Loading your tickets...</p>
           </div>
-        ) : tickets.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-lg p-12 text-center border-t-4 border-orange-500">
-            <div className="text-6xl mb-4"></div>
+        ) : !hasActive && inactive.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-lg p-10 text-center border-t-4 border-orange-500">
             <p className="text-2xl text-slate-900 font-bold mb-2">No tickets yet</p>
-            <p className="text-slate-600 mb-8">Register for events to get your tickets and QR codes</p>
+            <p className="text-slate-600 mb-8">Register for an event to get your QR code</p>
             <button
               onClick={() => navigate('/events')}
-              className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition duration-300 transform hover:scale-105 text-lg uppercase tracking-wide"
+              className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-3 px-8 rounded-full shadow-lg uppercase tracking-wide"
             >
               Browse Events
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6">
-            {tickets.map((ticket) => (
-              <div
-                key={ticket._id}
-                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition duration-300 overflow-hidden border-l-4 border-orange-500"
-              >
-                <div className="flex flex-col md:flex-row">
-                  {/* Info Section */}
-                  <div className="flex-1 p-8">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="text-2xl font-black text-slate-900 mb-4">
-                          {ticket.registration_id?.event_id?.event_name}
-                        </h3>
-                      </div>
-                      <span
-                        className={`px-6 py-2 rounded-full text-sm font-bold whitespace-nowrap ml-4 border-2 ${
-                          ticket.check_in_status
-                            ? 'bg-green-100 border-green-300 text-green-800'
-                            : 'bg-orange-100 border-orange-300 text-orange-800'
-                        }`}
-                      >
-                        {ticket.check_in_status ? '✓ Checked In' : 'Pending'}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                      <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase mb-1 tracking-wide">Date & Time</p>
-                        <p className="font-bold text-slate-900 text-lg">
-                          {new Date(ticket.registration_id?.event_id?.date).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </p>
-                        <p className="text-sm text-orange-600 font-semibold">
-                          {new Date(ticket.registration_id?.event_id?.date).toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase mb-1 tracking-wide">Location</p>
-                        <p className="font-bold text-slate-900 text-lg">
-                          {ticket.registration_id?.event_id?.location}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-500 uppercase mb-1 tracking-wide">Ticket Code</p>
-                        <p className="font-mono font-black text-slate-900 text-lg bg-slate-100 px-3 py-2 rounded-lg">
-                          {ticket.ticket_code}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* ===== Registration Type & Details (UPDATED FOR BOTH TYPES) ===== */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                      {/* Registration Type Badge */}
-                      <div className="bg-slate-50 p-4 rounded-lg border-2 border-blue-200">
-                        <p className="text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Registration Type</p>
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl">
-                            {ticket.registration_type === 'individual' ? '' : ''}
-                          </span>
-                          <p className="font-bold text-slate-900 text-lg capitalize">
-                            {ticket.registration_type}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Race Category (Now For BOTH Types) */}
-                      <div className="bg-slate-50 p-4 rounded-lg border-2 border-green-200">
-                        <p className="text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Race Category</p>
-                        <p className="font-bold text-slate-900 text-lg">
-                          {ticket.registration_id?.race_category || 'N/A'}
-                        </p>
-                      </div>
-
-                      {/* Team Size (Team only) */}
-                      {ticket.registration_type === 'team' && (
-                        <div className="bg-slate-50 p-4 rounded-lg border-2 border-purple-200">
-                          <p className="text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Team Size</p>
-                          <p className="font-bold text-slate-900 text-lg">
-                            {ticket.team_size} Participants
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Emergency Contact (Now For BOTH Types) */}
-                      <div className="bg-slate-50 p-4 rounded-lg border-2 border-yellow-200">
-                        <p className="text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Emergency Contact</p>
-                        <p className="font-bold text-slate-900 text-lg">
-                          {ticket.registration_id?.emergency_contact || 'N/A'}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* ===== Shirt Size Breakdown (Team only) ===== */}
-                    {ticket.registration_type === 'team' && ticket.shirt_sizes && Object.keys(ticket.shirt_sizes).length > 0 && (
-                      <div className="bg-green-50 p-4 rounded-lg border-2 border-green-200 mb-4">
-                        <p className="text-xs font-bold text-slate-600 uppercase mb-3 tracking-wide">Shirt Size Distribution</p>
-                        <div className="grid grid-cols-3 gap-3">
-                          {Object.entries(ticket.shirt_sizes).map(([size, qty]) => (
-                            <div key={size} className="bg-white p-3 rounded border border-green-300 text-center">
-                              <p className="text-xs font-bold text-slate-600 uppercase mb-1">{size}</p>
-                              <p className="text-2xl font-black text-green-600">{qty}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Check-in Date */}
-                    {ticket.check_in_status && ticket.check_in_date && (
-                      <div className="bg-green-50 p-3 rounded-lg border-2 border-green-200">
-                        <p className="text-xs font-bold text-slate-600 uppercase mb-1">Checked In</p>
-                        <p className="font-semibold text-green-700">
-                          {new Date(ticket.check_in_date).toLocaleString()}
-                        </p>
-                      </div>
-                    )}
+          <div className="space-y-10">
+            {sections
+              .filter((s) => s.items.length > 0)
+              .map((s) => (
+                <section key={s.title}>
+                  <h2 className="text-lg font-black text-slate-700 uppercase tracking-wide mb-4">{s.title}</h2>
+                  <div className="space-y-6">
+                    {s.items.map((o) => (
+                      <OrderCard
+                        key={o._id}
+                        order={o}
+                        now={now}
+                        paymentMode={paymentMode}
+                        highlighted={o.order_no === focusOrder}
+                        onShowQr={() => setQrOrder(o)}
+                        onChanged={load}
+                      />
+                    ))}
                   </div>
+                </section>
+              ))}
 
-                  {/* QR Code Section */}
-                  <div className="bg-gradient-to-br from-slate-50 to-orange-50 p-8 flex items-center justify-center md:w-64 border-t-2 md:border-t-0 md:border-l-2 border-slate-200">
-                    {ticket.qr_code ? (
-                      <div className="text-center">
-                        <p className="text-xs font-bold text-slate-600 uppercase mb-3 tracking-wide">Show to Staff</p>
-                        <img
-                          src={ticket.qr_code}
-                          alt="QR Code"
-                          className="w-48 h-48 border-4 border-white rounded-lg shadow-lg"
-                        />
-                      </div>
-                    ) : (
-                      <p className="text-slate-500 font-semibold">QR Code not available</p>
-                    )}
+            {inactive.length > 0 && (
+              <section>
+                <button
+                  onClick={() => setShowInactive((v) => !v)}
+                  className="text-slate-600 font-bold hover:text-slate-900"
+                >
+                  {showInactive ? '▾' : '▸'} Expired & cancelled ({inactive.length})
+                </button>
+                {showInactive && (
+                  <div className="space-y-6 mt-4">
+                    {inactive.map((o) => (
+                      <OrderCard
+                        key={o._id}
+                        order={o}
+                        now={now}
+                        paymentMode={paymentMode}
+                        highlighted={o.order_no === focusOrder}
+                        onShowQr={() => {}}
+                        onChanged={load}
+                      />
+                    ))}
                   </div>
-                </div>
-              </div>
-            ))}
+                )}
+              </section>
+            )}
           </div>
         )}
       </div>
+
+      {qrOrder && <QrModal order={qrOrder} onClose={() => setQrOrder(null)} />}
     </div>
   );
 }
