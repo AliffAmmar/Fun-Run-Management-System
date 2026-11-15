@@ -1,171 +1,183 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
+import { useAuth } from '../context/AuthContext';
+import MemberTable from '../components/registration/MemberTable';
+import CsvUpload from '../components/registration/CsvUpload';
+import ShirtSizeSummary from '../components/registration/ShirtSizeSummary';
+import {
+  SHIRT_SIZES,
+  MIN_GROUP_SIZE,
+  MAX_GROUP_SIZE,
+  emptyRow,
+  isBlankRow,
+  cleanRow,
+  validateRows,
+  serverErrorsByRow,
+  shirtSizeCounts,
+} from '../utils/participants';
+
+// Registration for one event, creating an Order (see backend /api/orders).
+//   Individual: Details → Review → Done
+//   Group:      Group details → Members (CSV or table) → Review → Done
+// All member details are collected BEFORE payment. Payment is attached to the Done step.
+
+const STEPS = {
+  individual: [
+    { key: 'details', label: 'Details' },
+    { key: 'review', label: 'Review' },
+    { key: 'done', label: 'Payment' },
+  ],
+  group: [
+    { key: 'details', label: 'Group' },
+    { key: 'members', label: 'Members' },
+    { key: 'review', label: 'Review' },
+    { key: 'done', label: 'Payment' },
+  ],
+};
+
+const label = 'block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide';
+const input =
+  'w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg';
+const primaryBtn =
+  'bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition duration-300 disabled:opacity-50 text-lg uppercase tracking-wide';
+const secondaryBtn =
+  'bg-slate-200 hover:bg-slate-300 text-slate-900 font-bold py-4 px-6 rounded-lg transition duration-300 uppercase tracking-wide';
+
+const money = (n) => `RM ${Number(n || 0).toFixed(2)}`;
 
 export default function EventRegistration() {
   const { eventId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [step, setStep] = useState(1);
-  const [registrationId, setRegistrationId] = useState(null);
-  const [ticketData, setTicketData] = useState(null);
-  const [selectedPrice, setSelectedPrice] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
-  // ===== Registration type state =====
-  const [registrationType, setRegistrationType] = useState('individual');
+  const [type, setType] = useState('individual');
+  const [step, setStep] = useState('details');
 
-  const [formData, setFormData] = useState({
-    race_category: '',
-    shirt_size: 'M',
-    emergency_contact: '',
-    team_name: '',
-  });
+  const [form, setForm] = useState({ race_category: '', emergency_contact: '', group_name: '', expected_size: '' });
+  const [self, setSelf] = useState({ name: '', email: '', shirt_size: 'M' }); // individual runner
+  const [rows, setRows] = useState(() => Array.from({ length: 5 }, emptyRow)); // group members
+  const [serverRowErrors, setServerRowErrors] = useState(null);
+  const [showRowErrors, setShowRowErrors] = useState(false);
+  const [consent, setConsent] = useState(false);
 
-  // ===== Shirt sizes for team registration =====
-  const [shirtSizes, setShirtSizes] = useState({
-    XS: 0,
-    S: 0,
-    M: 0,
-    L: 0,
-    XL: 0,
-    XXL: 0,
-  });
-
-  const shirtSizeOptions = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+  const [order, setOrder] = useState(null);
+  const [warnings, setWarnings] = useState([]);
 
   useEffect(() => {
-    fetchEvent();
+    apiClient
+      .get(`/events/${eventId}`)
+      .then((res) => {
+        const ev = res.data.event;
+        setEvent(ev);
+        setForm((f) => ({ ...f, race_category: ev.categories?.[0]?.name || '' }));
+      })
+      .catch(() => setError('Failed to load event'))
+      .finally(() => setLoading(false));
   }, [eventId]);
 
-  const fetchEvent = async () => {
-    try {
-      const response = await apiClient.get(`/events/${eventId}`);
-      setEvent(response.data.event);
-      if (response.data.event.categories && response.data.event.categories.length > 0) {
-        setSelectedPrice(response.data.event.categories[0].price);
-        setFormData((prev) => ({
-          ...prev,
-          race_category: response.data.event.categories[0].name,
-        }));
-      }
-    } catch (err) {
-      setError('Failed to load event');
-    } finally {
-      setLoading(false);
-    }
+  // Pre-fill the individual runner from the logged-in account.
+  useEffect(() => {
+    if (user) setSelf((s) => ({ ...s, name: s.name || user.name || '', email: s.email || user.email || '' }));
+  }, [user]);
+
+  const price = event?.categories?.find((c) => c.name === form.race_category)?.price || 0;
+  const filledRows = useMemo(() => rows.filter((r) => !isBlankRow(r)), [rows]);
+  // Live client-side errors; replaced by the server's errors after a rejected submit until
+  // the user edits the table again.
+  const rowErrors = useMemo(() => serverRowErrors || validateRows(rows), [rows, serverRowErrors]);
+  const memberCount = type === 'group' ? filledRows.length : 1;
+  const total = price * memberCount;
+  const counts = useMemo(
+    () => (type === 'group' ? shirtSizeCounts(filledRows) : shirtSizeCounts([self])),
+    [type, filledRows, self]
+  );
+  const expected = parseInt(form.expected_size, 10) || 0;
+
+  const registrationClosed =
+    event && (event.status !== 'published' || new Date(event.date) <= new Date());
+
+  const setField = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const setRowsAndClearServerErrors = (updater) => {
+    setServerRowErrors(null);
+    setRows(updater);
+  };
+  const go = (next) => {
+    setError('');
+    setStep(next);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // ===== Calculate team size from shirt sizes =====
-  const calculateTeamSize = () => {
-    return Object.values(shirtSizes).reduce((sum, qty) => sum + qty, 0);
-  };
-
-  // ===== Calculate total price =====
-  const calculateTotalPrice = () => {
-    if (registrationType === 'individual') {
-      return selectedPrice;
-    } else {
-      return selectedPrice * calculateTeamSize();
-    }
-  };
-
-  // ===== Handle shirt size change =====
-  const handleShirtSizeChange = (size, quantity) => {
-    setShirtSizes((prev) => ({
-      ...prev,
-      [size]: Math.max(0, quantity),
-    }));
-  };
-
-  const handleRegistration = async (e) => {
+  // ---- Step transitions --------------------------------------------------------
+  const continueFromDetails = (e) => {
     e.preventDefault();
+    if (!form.emergency_contact.trim()) return setError('Emergency contact is required');
+    if (type === 'individual') {
+      if (!self.name.trim()) return setError('Please enter your full name');
+      if (!SHIRT_SIZES.includes(self.shirt_size)) return setError('Please choose a shirt size');
+      return go('review');
+    }
+    if (!form.group_name.trim()) return setError('Group name is required');
+    return go('members');
+  };
+
+  const continueFromMembers = () => {
+    // Drop empty rows so the table rows match exactly what is sent (row numbers stay aligned
+    // with the server's error messages).
+    const kept = rows.filter((r) => !isBlankRow(r));
+    setRowsAndClearServerErrors(kept.length ? kept : [emptyRow()]);
+    setShowRowErrors(true);
+
+    if (kept.length < MIN_GROUP_SIZE) return setError(`A group needs at least ${MIN_GROUP_SIZE} members`);
+    if (kept.length > MAX_GROUP_SIZE) return setError(`A group can have at most ${MAX_GROUP_SIZE} members`);
+    const errs = validateRows(kept);
+    if (Object.keys(errs).length > 0) {
+      return setError(`Please fix ${Object.keys(errs).length} row(s) highlighted below`);
+    }
+    return go('review');
+  };
+
+  const submit = async () => {
     setSubmitting(true);
     setError('');
-
+    const participants = type === 'group' ? filledRows.map(cleanRow) : [cleanRow(self)];
     try {
-      // ===== VALIDATION =====
-      if (registrationType === 'individual') {
-        if (!formData.race_category || !formData.shirt_size || !formData.emergency_contact) {
-          setError('Please fill in all required fields');
-          setSubmitting(false);
-          return;
-        }
-      } else if (registrationType === 'team') {
-        if (!formData.race_category || !formData.team_name || !formData.emergency_contact || calculateTeamSize() < 2) {
-          setError('Please fill in all required fields and ensure team has at least 2 participants');
-          setSubmitting(false);
-          return;
-        }
-      }
-
-      // ===== BUILD PAYLOAD =====
-      const payload = {
+      const res = await apiClient.post('/orders', {
         event_id: eventId,
-        registration_type: registrationType,
-        race_category: formData.race_category,
-        emergency_contact: formData.emergency_contact,
-      };
-
-      if (registrationType === 'individual') {
-        payload.shirt_size = formData.shirt_size;
-      } else {
-        payload.team_name = formData.team_name;
-        payload.shirt_sizes = shirtSizes;
-      }
-
-      // ===== SEND TO BACKEND =====
-      const response = await apiClient.post('/registrations', payload);
-      setRegistrationId(response.data.registration._id);
-      setStep(2);
+        type,
+        race_category: form.race_category,
+        group_name: type === 'group' ? form.group_name.trim() : undefined,
+        emergency_contact: form.emergency_contact.trim(),
+        consent_given: type === 'group' ? consent : undefined,
+        participants: participants.map((p) => ({ ...p, email: p.email || undefined })),
+      });
+      setOrder(res.data.order);
+      setWarnings(res.data.warnings || []);
+      go('done');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      const data = err.response?.data || {};
+      setError(data.message || 'Registration failed. Please try again.');
+      if (Array.isArray(data.errors) && data.errors.length > 0) {
+        if (type === 'group') {
+          setServerRowErrors(serverErrorsByRow(data.errors));
+          setShowRowErrors(true);
+          setStep('members');
+        } else {
+          setError(data.errors.map((x) => x.message.replace(/^Row 1: /, '')).join('. '));
+          setStep('details');
+        }
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handlePayment = async () => {
-    setSubmitting(true);
-    setError('');
-
-    try {
-      await apiClient.post('/payments', {
-        registration_id: registrationId,
-        amount: calculateTotalPrice(),
-        payment_method: 'credit_card',
-      });
-
-      const ticketResponse = await apiClient.post('/tickets/generate', {
-        registration_id: registrationId,
-      });
-
-      setTicketData(ticketResponse.data.ticket);
-      setStep(3);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Payment failed');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (name === 'race_category' && event?.categories) {
-      const selectedCat = event.categories.find((cat) => cat.name === value);
-      if (selectedCat) {
-        setSelectedPrice(selectedCat.price);
-      }
-    }
-  };
-
+  // ---- Render ----------------------------------------------------------------------
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
@@ -177,340 +189,387 @@ export default function EventRegistration() {
     );
   }
 
+  const steps = STEPS[type];
+  const stepIndex = steps.findIndex((s) => s.key === step);
+
   return (
-    <div className="bg-gradient-to-b from-slate-50 via-white to-orange-50 min-h-screen py-12 px-6">
-      <div className="max-w-3xl mx-auto">
-        <button onClick={() => navigate(-1)} className="text-orange-600 hover:text-orange-700 font-bold mb-8 inline-block text-lg">
-          ← Back
-        </button>
+    <div className="bg-gradient-to-b from-slate-50 via-white to-orange-50 min-h-screen py-8 sm:py-12 px-4 sm:px-6">
+      <div className={`${step === 'members' ? 'max-w-5xl' : 'max-w-3xl'} mx-auto`}>
+        {step !== 'done' && (
+          <button
+            onClick={() => (stepIndex > 0 ? go(steps[stepIndex - 1].key) : navigate(-1))}
+            className="text-orange-600 hover:text-orange-700 font-bold mb-6 inline-block text-lg"
+          >
+            ← Back
+          </button>
+        )}
 
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-slate-900 via-red-700 to-orange-600 p-8 text-white">
-            <h1 className="text-3xl font-black mb-2">Register for {event?.event_name}</h1>
-            <p className="text-orange-100">Complete your registration in 3 easy steps</p>
+          <div className="bg-gradient-to-r from-slate-900 via-red-700 to-orange-600 p-6 sm:p-8 text-white">
+            <h1 className="text-2xl sm:text-3xl font-black mb-2">Register for {event?.event_name}</h1>
+            <p className="text-orange-100">
+              {event?.date && new Date(event.date).toLocaleDateString('en-MY', { dateStyle: 'full' })}
+              {event?.location && ` · ${event.location}`}
+            </p>
           </div>
 
-          <div className="p-8">
-            {error && (
-              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-8 font-semibold">
-                {error}
+          <div className="p-5 sm:p-8">
+            {registrationClosed ? (
+              <div className="bg-slate-100 border-l-4 border-slate-500 text-slate-700 p-4 rounded-lg font-semibold">
+                Registration for this event is closed.
               </div>
-            )}
-
-            {/* Step Indicator */}
-            <div className="flex justify-between mb-12">
-              <div className={`flex-1 text-center pb-4 border-b-4 transition ${step >= 1 ? 'border-orange-600' : 'border-slate-200'}`}>
-                <div className={`w-10 h-10 mx-auto mb-2 rounded-full flex items-center justify-center font-bold text-white transition ${step >= 1 ? 'bg-gradient-to-r from-orange-500 to-red-600' : 'bg-slate-300'}`}>
-                  1
-                </div>
-                <p className={`font-bold uppercase tracking-wide text-sm ${step >= 1 ? 'text-orange-600' : 'text-slate-500'}`}>Registration</p>
-              </div>
-              <div className={`flex-1 text-center pb-4 border-b-4 transition ${step >= 2 ? 'border-orange-600' : 'border-slate-200'}`}>
-                <div className={`w-10 h-10 mx-auto mb-2 rounded-full flex items-center justify-center font-bold text-white transition ${step >= 2 ? 'bg-gradient-to-r from-orange-500 to-red-600' : 'bg-slate-300'}`}>
-                  2
-                </div>
-                <p className={`font-bold uppercase tracking-wide text-sm ${step >= 2 ? 'text-orange-600' : 'text-slate-500'}`}>Payment</p>
-              </div>
-              <div className={`flex-1 text-center pb-4 border-b-4 transition ${step >= 3 ? 'border-orange-600' : 'border-slate-200'}`}>
-                <div className={`w-10 h-10 mx-auto mb-2 rounded-full flex items-center justify-center font-bold text-white transition ${step >= 3 ? 'bg-gradient-to-r from-orange-500 to-red-600' : 'bg-slate-300'}`}>
-                  3
-                </div>
-                <p className={`font-bold uppercase tracking-wide text-sm ${step >= 3 ? 'text-orange-600' : 'text-slate-500'}`}>Ticket</p>
-              </div>
-            </div>
-
-            {/* Step 1: Registration Form */}
-            {step === 1 && (
-              <form onSubmit={handleRegistration} className="space-y-6">
-                {/* ===== Registration Type Toggle ===== */}
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Registration Type *</label>
-                  <div className="flex gap-6 bg-slate-50 p-4 rounded-lg border-2 border-slate-200">
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="registration_type"
-                        value="individual"
-                        checked={registrationType === 'individual'}
-                        onChange={(e) => setRegistrationType(e.target.value)}
-                        className="w-5 h-5 accent-orange-600 cursor-pointer"
-                      />
-                      <span className="font-semibold text-slate-700">Individual</span>
-                    </label>
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="registration_type"
-                        value="team"
-                        checked={registrationType === 'team'}
-                        onChange={(e) => setRegistrationType(e.target.value)}
-                        className="w-5 h-5 accent-orange-600 cursor-pointer"
-                      />
-                      <span className="font-semibold text-slate-700">Team (Bulk)</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* ===== INDIVIDUAL SECTION ===== */}
-                {registrationType === 'individual' && (
-                  <div className="space-y-6 bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Race Category *</label>
-                      <select
-                        name="race_category"
-                        value={formData.race_category}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
+            ) : (
+              <>
+                {/* Step indicator */}
+                <div className="flex justify-between mb-8">
+                  {steps.map((s, i) => (
+                    <div
+                      key={s.key}
+                      className={`flex-1 text-center pb-3 border-b-4 ${i <= stepIndex ? 'border-orange-600' : 'border-slate-200'}`}
+                    >
+                      <div
+                        className={`w-9 h-9 mx-auto mb-2 rounded-full flex items-center justify-center font-bold text-white ${
+                          i <= stepIndex ? 'bg-gradient-to-r from-orange-500 to-red-600' : 'bg-slate-300'
+                        }`}
                       >
-                        {event?.categories?.map((cat) => (
-                          <option key={cat.name} value={cat.name}>
-                            {cat.name} - RM {cat.price.toFixed(2)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Shirt Size *</label>
-                      <select
-                        name="shirt_size"
-                        value={formData.shirt_size}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
+                        {i + 1}
+                      </div>
+                      <p
+                        className={`font-bold uppercase tracking-wide text-xs sm:text-sm ${
+                          i <= stepIndex ? 'text-orange-600' : 'text-slate-500'
+                        }`}
                       >
-                        <option value="XS">XS - Extra Small</option>
-                        <option value="S">S - Small</option>
-                        <option value="M">M - Medium</option>
-                        <option value="L">L - Large</option>
-                        <option value="XL">XL - Extra Large</option>
-                        <option value="XXL">XXL - 2XL</option>
-                      </select>
+                        {s.label}
+                      </p>
                     </div>
+                  ))}
+                </div>
 
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Emergency Contact *</label>
-                      <input
-                        type="text"
-                        name="emergency_contact"
-                        value={formData.emergency_contact}
-                        onChange={handleChange}
-                        required
-                        placeholder="Phone number"
-                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
-                      />
-                    </div>
+                {error && (
+                  <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6 font-semibold">
+                    {error}
                   </div>
                 )}
 
-                {/* ===== TEAM SECTION ===== */}
-                {registrationType === 'team' && (
-                  <div className="space-y-6 bg-green-50 p-6 rounded-lg border-2 border-green-200">
-                    {/* Race Category for Team */}
+                {step === 'details' && (
+                  <form onSubmit={continueFromDetails} className="space-y-6">
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Race Category *</label>
-                      <select
-                        name="race_category"
-                        value={formData.race_category}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
-                      >
-                        {event?.categories?.map((cat) => (
-                          <option key={cat.name} value={cat.name}>
-                            {cat.name} - RM {cat.price.toFixed(2)} per person
+                      <span className={label}>Registration type *</span>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          ['individual', 'Individual', 'Just me'],
+                          ['group', 'Group', `${MIN_GROUP_SIZE}–${MAX_GROUP_SIZE} runners, one payment`],
+                        ].map(([value, title, sub]) => (
+                          <button
+                            type="button"
+                            key={value}
+                            onClick={() => setType(value)}
+                            className={`text-left p-4 rounded-xl border-2 transition ${
+                              type === value ? 'border-orange-500 bg-orange-50' : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <p className="font-bold text-slate-900">{title}</p>
+                            <p className="text-sm text-slate-600">{sub}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="race_category" className={label}>
+                        Race category *
+                      </label>
+                      <select id="race_category" name="race_category" value={form.race_category} onChange={setField} className={input}>
+                        {event?.categories?.map((c) => (
+                          <option key={c.name} value={c.name}>
+                            {c.name} · {money(c.price)}
+                            {type === 'group' ? ' per person' : ''}
                           </option>
                         ))}
                       </select>
+                      {type === 'group' && (
+                        <p className="text-sm text-slate-500 mt-1">The whole group runs the same category.</p>
+                      )}
                     </div>
 
-                    {/* Team Name */}
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Organization / Team Name *</label>
-                      <input
-                        type="text"
-                        name="team_name"
-                        value={formData.team_name}
-                        onChange={handleChange}
-                        required
-                        placeholder="Enter your organization or team name"
-                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
-                      />
-                    </div>
-
-                    {/* Emergency Contact for Team */}
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Emergency Contact (Team Leader) *</label>
-                      <input
-                        type="text"
-                        name="emergency_contact"
-                        value={formData.emergency_contact}
-                        onChange={handleChange}
-                        required
-                        placeholder="Phone number"
-                        className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
-                      />
-                    </div>
-
-                    {/* Shirt Sizes */}
-                    <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Select Shirt Sizes *</label>
-                      <div className="grid grid-cols-3 gap-4">
-                        {shirtSizeOptions.map((size) => (
-                          <div key={size} className="flex flex-col items-center bg-white p-4 rounded-lg border-2 border-slate-200">
-                            <p className="text-sm font-bold text-slate-600 mb-3 uppercase">{size}</p>
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleShirtSizeChange(size, shirtSizes[size] - 1)}
-                                className="bg-red-500 hover:bg-red-600 text-white w-8 h-8 rounded font-bold transition"
-                              >
-                                −
-                              </button>
-                              <input
-                                type="number"
-                                value={shirtSizes[size]}
-                                onChange={(e) => handleShirtSizeChange(size, parseInt(e.target.value) || 0)}
-                                min="0"
-                                className="w-14 text-center border-2 border-slate-200 rounded py-2 font-bold text-lg"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => handleShirtSizeChange(size, shirtSizes[size] + 1)}
-                                className="bg-green-500 hover:bg-green-600 text-white w-8 h-8 rounded font-bold transition"
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Team Summary */}
-                      <div className="mt-6 bg-white p-4 rounded-lg border-2 border-orange-300">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="text-sm text-slate-600 font-semibold">Total Participants:</p>
-                            <p className="text-3xl font-black text-blue-600">{calculateTeamSize()}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-slate-600 font-semibold">Unit Price:</p>
-                            <p className="text-2xl font-bold text-slate-900">RM {selectedPrice.toFixed(2)}</p>
-                          </div>
+                    {type === 'individual' ? (
+                      <>
+                        <div>
+                          <label htmlFor="self_name" className={label}>
+                            Full name (as it should appear on your certificate) *
+                          </label>
+                          <input
+                            id="self_name"
+                            value={self.name}
+                            onChange={(e) => setSelf({ ...self, name: e.target.value })}
+                            className={input}
+                          />
                         </div>
-                      </div>
+                        <div>
+                          <label htmlFor="self_email" className={label}>
+                            Email
+                          </label>
+                          <input
+                            id="self_email"
+                            type="email"
+                            value={self.email}
+                            onChange={(e) => setSelf({ ...self, email: e.target.value })}
+                            className={input}
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="self_size" className={label}>
+                            Shirt size *
+                          </label>
+                          <select
+                            id="self_size"
+                            value={self.shirt_size}
+                            onChange={(e) => setSelf({ ...self, shirt_size: e.target.value })}
+                            className={input}
+                          >
+                            {SHIRT_SIZES.map((s) => (
+                              <option key={s}>{s}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label htmlFor="group_name" className={label}>
+                            Group / organisation name *
+                          </label>
+                          <input
+                            id="group_name"
+                            name="group_name"
+                            value={form.group_name}
+                            onChange={setField}
+                            placeholder="e.g. Kelab Larian Surau"
+                            className={input}
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="expected_size" className={label}>
+                            Expected number of runners
+                          </label>
+                          <input
+                            id="expected_size"
+                            name="expected_size"
+                            type="number"
+                            min={MIN_GROUP_SIZE}
+                            max={MAX_GROUP_SIZE}
+                            value={form.expected_size}
+                            onChange={setField}
+                            placeholder="Optional, helps you track progress"
+                            className={input}
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <div>
+                      <label htmlFor="emergency_contact" className={label}>
+                        {type === 'group' ? 'Emergency contact (group leader) *' : 'Emergency contact *'}
+                      </label>
+                      <input
+                        id="emergency_contact"
+                        name="emergency_contact"
+                        type="tel"
+                        value={form.emergency_contact}
+                        onChange={setField}
+                        placeholder="Phone number"
+                        className={input}
+                      />
                     </div>
+
+                    <button type="submit" className={`w-full ${primaryBtn}`}>
+                      Continue →
+                    </button>
+                  </form>
+                )}
+
+                {step === 'members' && (
+                  <div className="space-y-6">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <h2 className="text-xl font-black text-slate-900">Members of {form.group_name}</h2>
+                      <p className="font-bold text-slate-700">
+                        {filledRows.length}
+                        {expected > 0 ? ` of ${expected}` : ''} added
+                        <span className="text-slate-500 font-semibold"> · max {MAX_GROUP_SIZE}</span>
+                      </p>
+                    </div>
+                    {expected > 0 && (
+                      <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-orange-500 to-red-600"
+                          style={{ width: `${Math.min(100, (filledRows.length / expected) * 100)}%` }}
+                        />
+                      </div>
+                    )}
+
+                    <CsvUpload
+                      hasExistingRows={filledRows.length > 0}
+                      onLoaded={(loaded) => {
+                        setRowsAndClearServerErrors(loaded);
+                        setShowRowErrors(true);
+                        setError('');
+                      }}
+                    />
+
+                    <div>
+                      <p className="font-bold text-slate-800 mb-3">…or type the members in</p>
+                      <MemberTable
+                        rows={rows}
+                        setRows={setRowsAndClearServerErrors}
+                        errors={rowErrors}
+                        showErrors={showRowErrors || Boolean(serverRowErrors)}
+                      />
+                    </div>
+
+                    <div className="bg-slate-50 rounded-xl p-4">
+                      <p className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-2">Shirt sizes so far</p>
+                      <ShirtSizeSummary counts={counts} />
+                    </div>
+
+                    <button type="button" onClick={continueFromMembers} className={`w-full ${primaryBtn}`}>
+                      Review →
+                    </button>
                   </div>
                 )}
 
-                {/* Price Summary */}
-                <div className="bg-gradient-to-br from-orange-100 to-red-100 border-2 border-orange-300 p-6 rounded-xl">
-                  <p className="text-sm font-bold text-slate-700 uppercase mb-2 tracking-wide">Estimated Total</p>
-                  <p className="text-4xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                    RM {calculateTotalPrice().toFixed(2)}
-                  </p>
-                </div>
+                {step === 'review' && (
+                  <div className="space-y-6">
+                    <div className="bg-slate-50 rounded-xl p-5 space-y-2">
+                      <Row k="Event" v={event?.event_name} />
+                      <Row k="Category" v={form.race_category} />
+                      {type === 'group' ? (
+                        <>
+                          <Row k="Group" v={form.group_name} />
+                          <Row k="Runners" v={memberCount} />
+                        </>
+                      ) : (
+                        <>
+                          <Row k="Name" v={self.name} />
+                          {self.email && <Row k="Email" v={self.email} />}
+                          <Row k="Shirt size" v={self.shirt_size} />
+                        </>
+                      )}
+                      <Row k="Emergency contact" v={form.emergency_contact} />
+                    </div>
 
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition duration-300 disabled:opacity-50 transform hover:scale-105 text-lg uppercase tracking-wide mt-8"
-                >
-                  {submitting ? 'Processing...' : 'Proceed to Payment →'}
-                </button>
-              </form>
-            )}
+                    {type === 'group' && (
+                      <>
+                        <div>
+                          <p className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-2">Shirt sizes</p>
+                          <ShirtSizeSummary counts={counts} />
+                        </div>
+                        <details className="bg-slate-50 rounded-xl p-4">
+                          <summary className="font-bold text-slate-800 cursor-pointer">
+                            Show all {memberCount} members
+                          </summary>
+                          <ol className="mt-3 space-y-1 text-sm text-slate-700 list-decimal list-inside">
+                            {filledRows.map((r, i) => {
+                              const c = cleanRow(r);
+                              return (
+                                <li key={i}>
+                                  {c.name} · {c.shirt_size}
+                                  {c.email && <span className="text-slate-500"> · {c.email}</span>}
+                                </li>
+                              );
+                            })}
+                          </ol>
+                        </details>
+                      </>
+                    )}
 
-            {/* Step 2: Payment */}
-            {step === 2 && (
-              <div className="space-y-8">
-                <div className="bg-gradient-to-br from-orange-100 to-red-100 border-2 border-orange-300 p-8 rounded-xl">
-                  <p className="text-sm font-bold text-slate-700 uppercase mb-3 tracking-wide">Total Amount Due</p>
-                  <p className="text-5xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-2">
-                    RM {calculateTotalPrice().toFixed(2)}
-                  </p>
-                  <p className="text-sm text-slate-700 font-semibold mt-4">
-                    {registrationType === 'individual' 
-                      ? `${formData.race_category}` 
-                      : `${formData.team_name} • ${formData.race_category} • ${calculateTeamSize()} participants`
-                    }
-                  </p>
-                </div>
+                    <div className="bg-gradient-to-br from-orange-100 to-red-100 border-2 border-orange-300 p-6 rounded-xl">
+                      <p className="text-sm font-bold text-slate-700 uppercase mb-1 tracking-wide">Total</p>
+                      <p className="text-4xl font-black text-orange-700">{money(total)}</p>
+                      {type === 'group' && (
+                        <p className="text-sm text-slate-700 font-semibold mt-1">
+                          {memberCount} × {money(price)}
+                        </p>
+                      )}
+                    </div>
 
-                <div className="bg-slate-50 p-6 rounded-lg border-2 border-slate-200">
-                  <p className="text-slate-700 font-semibold mb-3">Secure Payment</p>
-                  <p className="text-slate-600 mb-4">
-                    Click the button below to complete your payment. This is a mock payment and will be automatically marked as successful.
-                  </p>
-                </div>
+                    {type === 'group' && (
+                      <label className="flex items-start gap-3 bg-blue-50 border-2 border-blue-200 rounded-xl p-4 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={consent}
+                          onChange={(e) => setConsent(e.target.checked)}
+                          className="w-5 h-5 mt-1 accent-orange-600"
+                        />
+                        <span className="text-slate-800">
+                          I confirm that all members listed have agreed to share their details (name, email, shirt
+                          size) with the organiser for this event.
+                        </span>
+                      </label>
+                    )}
 
-                <button
-                  onClick={handlePayment}
-                  disabled={submitting}
-                  className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition duration-300 disabled:opacity-50 transform hover:scale-105 text-lg uppercase tracking-wide"
-                >
-                  {submitting ? 'Processing Payment...' : 'Complete Payment'}
-                </button>
-              </div>
-            )}
-
-            {/* Step 3: Ticket */}
-            {step === 3 && ticketData && (
-              <div className="text-center space-y-8">
-                <div className="bg-green-100 border-2 border-green-500 text-green-800 p-6 rounded-xl font-bold text-lg">
-                  ✓ Payment successful and ticket generated!
-                </div>
-
-                <div className="bg-gradient-to-br from-slate-50 to-orange-50 p-8 rounded-xl border-2 border-slate-200">
-                  <p className="text-sm font-bold text-slate-600 uppercase mb-6 tracking-wide">Present this QR Code</p>
-                  {ticketData.qr_code && (
-                    <img src={ticketData.qr_code} alt="QR Code" className="w-56 h-56 mx-auto mb-8 border-4 border-white rounded-lg shadow-lg" />
-                  )}
-                  <p className="text-xs font-bold text-slate-600 uppercase mb-2 tracking-wide">Ticket Code</p>
-                  <p className="text-2xl font-mono font-black text-slate-900 bg-white px-4 py-3 rounded-lg border-2 border-orange-300">
-                    {ticketData.ticket_code}
-                  </p>
-                  
-                  {/* Show ticket type info */}
-                  <div className="mt-6 bg-white p-4 rounded-lg border-2 border-blue-300">
-                    <p className="text-sm font-semibold text-slate-600 mb-2">Registration Type:</p>
-                    <p className="text-lg font-bold text-blue-600">
-                      {ticketData.registration_type === 'individual' ? 'Individual' : `Team - ${ticketData.team_size} Participants`}
-                    </p>
-                    <p className="text-sm font-semibold text-slate-600 mt-3 mb-1">Race Category:</p>
-                    <p className="text-lg font-bold text-blue-600">
-                      {ticketData.race_category}
-                    </p>
+                    <button
+                      type="button"
+                      onClick={submit}
+                      disabled={submitting || (type === 'group' && !consent)}
+                      className={`w-full ${primaryBtn}`}
+                    >
+                      {submitting ? 'Saving…' : 'Confirm registration →'}
+                    </button>
                   </div>
-                </div>
+                )}
 
-                <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
-                  <p className="text-slate-700 font-semibold text-sm">
-                    📱 Save this page or your ticket. You'll need to present the QR code on the day of the event.
-                  </p>
-                </div>
+                {step === 'done' && order && (
+                  <div className="space-y-6">
+                    <div className="bg-green-100 border-2 border-green-500 text-green-800 p-5 rounded-xl">
+                      <p className="font-black text-lg">Registration saved: {order.order_no}</p>
+                      <p className="font-semibold">
+                        Your {order.participant_count === 1 ? 'slot is' : `${order.participant_count} slots are`} held for
+                        30 minutes. Complete payment to confirm.
+                      </p>
+                    </div>
 
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => navigate('/my-tickets')}
-                    className="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition duration-300 transform hover:scale-105 uppercase tracking-wide"
-                  >
-                    View My Tickets
-                  </button>
-                  <button
-                    onClick={() => navigate('/events')}
-                    className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-900 font-bold py-4 px-6 rounded-lg transition duration-300 uppercase tracking-wide"
-                  >
-                    Browse More Events
-                  </button>
-                </div>
-              </div>
+                    {warnings.length > 0 && (
+                      <div className="bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 p-4 rounded-lg">
+                        <p className="font-bold mb-1">Please double-check:</p>
+                        <ul className="list-disc list-inside text-sm">
+                          {warnings.map((w) => (
+                            <li key={w.message}>{w.message}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="bg-gradient-to-br from-orange-100 to-red-100 border-2 border-orange-300 p-6 rounded-xl">
+                      <p className="text-sm font-bold text-slate-700 uppercase mb-1 tracking-wide">Amount due</p>
+                      <p className="text-4xl font-black text-orange-700">{money(order.total_amount)}</p>
+                    </div>
+
+                    {/* TODO(payment step): replace with "Pay now" (mock / Stripe Checkout). */}
+                    <div className="bg-slate-50 border-2 border-slate-200 p-5 rounded-xl text-slate-700">
+                      Online payment for this registration is coming in the next update.
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button onClick={() => navigate('/events')} className={`flex-1 ${secondaryBtn}`}>
+                        Browse more events
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Row({ k, v }) {
+  return (
+    <div className="flex justify-between gap-4">
+      <span className="text-slate-500 font-semibold">{k}</span>
+      <span className="text-slate-900 font-bold text-right">{v}</span>
     </div>
   );
 }
