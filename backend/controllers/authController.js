@@ -23,7 +23,8 @@ const register = async (req, res) => {
       email,
       password: hashedPassword,
       phone_no,
-      role: role || 'participant',
+      // Users may sign up as participant or organizer. Never admin: any other value becomes participant.
+      role: role === 'organizer' ? 'organizer' : 'participant',
     });
 
     // Create welcome notification
