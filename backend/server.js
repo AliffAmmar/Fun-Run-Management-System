@@ -8,8 +8,8 @@ mongoose
   .connect(process.env.MONGODB_URI)
   .then(async () => {
     console.log('MongoDB connected');
-    // Drops the old unique index on payments.registration_id (it blocked payment retries and
-    // order-based payments). Safe to run every start: it only changes indexes that differ.
+    // Drops the old unique index on payments.registration_id (from the removed Registration
+    // model; it blocked payment retries). Safe to run every start: only changes indexes that differ.
     await Payment.syncIndexes();
   })
   .catch((err) => console.error('MongoDB connection error:', err));

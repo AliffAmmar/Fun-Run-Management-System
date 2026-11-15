@@ -6,9 +6,7 @@ const cors = require('cors');
 
 const authRoutes = require('./routes/auth');
 const eventRoutes = require('./routes/events');
-const registrationRoutes = require('./routes/registrations');
 const paymentRoutes = require('./routes/payments');
-const ticketRoutes = require('./routes/tickets');
 const notificationRoutes = require('./routes/notifications');
 const reportRoutes = require('./routes/reports');
 const orderRoutes = require('./routes/orders');
@@ -26,9 +24,7 @@ app.use(cors({
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
-app.use('/api/registrations', registrationRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/tickets', ticketRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/orders', orderRoutes);

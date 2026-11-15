@@ -4,16 +4,11 @@ const mongoose = require('mongoose');
 // successful retry), so nothing here is unique per order.
 const paymentSchema = new mongoose.Schema(
   {
-    // New registrations (Order + Participant).
     order_id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Order',
+      required: true,
       index: true,
-    },
-    // Old registrations only. Kept (optional, NOT unique) until reports move to orders.
-    registration_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Registration',
     },
     // Always copied from order.total_amount on the server, never from the client.
     amount: {

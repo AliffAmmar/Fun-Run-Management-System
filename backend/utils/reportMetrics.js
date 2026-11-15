@@ -1,6 +1,16 @@
+// Event report metrics (partner's report module), computed from Order + Participant + Payment.
+// Output keys are unchanged from the Registration/Ticket version so the report page, CSV and PDF
+// exports keep working. Differences in meaning:
+//   - a "registration" is now an Order (individual or group); by_registration_type keys are
+//     'individual' and 'group' (was 'team');
+//   - participants / shirt sizes / check-ins count only PAID orders;
+//   - payments: an order can have several attempts (e.g. failed then success), all are counted.
+// Added (new keys, nothing removed): kit_collected_participants, kit_collection_rate.
 const mongoose = require('mongoose');
-const Registration = require('../models/Registration');
 const Event = require('../models/Event');
+const Order = require('../models/Order');
+const Participant = require('../models/Participant');
+const Payment = require('../models/Payment');
 
 const emptyMetrics = (event) => ({
   registration_count: 0,
@@ -17,114 +27,86 @@ const emptyMetrics = (event) => ({
   capacity_utilization: 0,
   checked_in_participants: 0,
   attendance_rate: 0,
+  kit_collected_participants: 0,
+  kit_collection_rate: 0,
   capacity: event.capacity,
 });
 
 const getEventReportMetrics = async (eventId, event) => {
-  const registrations = await Registration.aggregate([
-    { $match: { event_id: new mongoose.Types.ObjectId(eventId) } },
-    {
-      $lookup: {
-        from: 'payments',
-        localField: '_id',
-        foreignField: 'registration_id',
-        as: 'payments',
-      },
-    },
-    {
-      $lookup: {
-        from: 'tickets',
-        localField: '_id',
-        foreignField: 'registration_id',
-        as: 'tickets',
-      },
-    },
-    {
-      $project: {
-        registration_type: 1,
-        race_category: 1,
-        team_size: 1,
-        shirt_size: 1,
-        registration_status: 1,
-        createdAt: 1,
-        team_shirt_sizes: { $objectToArray: { $ifNull: ['$shirt_sizes', {}] } },
-        payments: 1,
-        tickets: 1,
-      },
-    },
-  ]);
-
-  if (registrations.length === 0) {
-    return emptyMetrics(event);
-  }
+  const eventObjectId = new mongoose.Types.ObjectId(String(eventId));
+  const orders = await Order.find({ event_id: eventObjectId })
+    .select('type race_category participant_count status kit_collected checked_in createdAt')
+    .lean();
 
   const metrics = emptyMetrics(event);
+  if (orders.length === 0) return metrics;
+
+  const orderIds = orders.map((o) => o._id);
+  const paidIds = orders.filter((o) => o.status === 'paid').map((o) => o._id);
+
+  const [payments, shirtCounts] = await Promise.all([
+    Payment.find({ order_id: { $in: orderIds } }).select('order_id amount payment_method payment_status').lean(),
+    Participant.aggregate([
+      { $match: { order_id: { $in: paidIds } } },
+      { $group: { _id: '$shirt_size', count: { $sum: 1 } } },
+    ]),
+  ]);
+
   const categoryBreakdowns = metrics.breakdowns.by_race_category;
   const typeBreakdowns = metrics.breakdowns.by_registration_type;
   const methodBreakdowns = metrics.breakdowns.by_payment_method;
-  const shirtBreakdowns = metrics.breakdowns.by_shirt_size;
   const dailyCounts = new Map();
+  const orderById = new Map(orders.map((o) => [String(o._id), o]));
 
-  metrics.registration_count = registrations.length;
+  metrics.registration_count = orders.length;
 
-  for (const registration of registrations) {
-    const teamSize = Number(registration.team_size) || 1;
-    const confirmed = registration.registration_status === 'confirmed';
-    const payment = registration.payments[0];
-    const successfulAmount = payment?.payment_status === 'success' ? Number(payment.amount) || 0 : 0;
-    const category = registration.race_category || 'Unspecified';
-    const registrationType = registration.registration_type || 'Unspecified';
+  for (const order of orders) {
+    const category = order.race_category || 'Unspecified';
+    const type = order.type || 'Unspecified';
+    const runners = Number(order.participant_count) || 1;
 
-    if (!categoryBreakdowns[category]) {
-      categoryBreakdowns[category] = { participants: 0, revenue: 0 };
-    }
-    if (!typeBreakdowns[registrationType]) {
-      typeBreakdowns[registrationType] = { registrations: 0, participants: 0, revenue: 0 };
-    }
+    categoryBreakdowns[category] = categoryBreakdowns[category] || { participants: 0, revenue: 0 };
+    typeBreakdowns[type] = typeBreakdowns[type] || { registrations: 0, participants: 0, revenue: 0 };
+    typeBreakdowns[type].registrations += 1;
 
-    typeBreakdowns[registrationType].registrations += 1;
-    categoryBreakdowns[category].revenue += successfulAmount;
-    typeBreakdowns[registrationType].revenue += successfulAmount;
-
-    if (confirmed) {
-      metrics.total_participants += teamSize;
-      categoryBreakdowns[category].participants += teamSize;
-      typeBreakdowns[registrationType].participants += teamSize;
-
-      if (registration.registration_type === 'individual' && registration.shirt_size) {
-        shirtBreakdowns[registration.shirt_size] = (shirtBreakdowns[registration.shirt_size] || 0) + 1;
-      }
-      for (const shirtSize of registration.team_shirt_sizes || []) {
-        shirtBreakdowns[shirtSize.k] = (shirtBreakdowns[shirtSize.k] || 0) + (Number(shirtSize.v) || 0);
-      }
+    if (order.status === 'paid') {
+      metrics.total_participants += runners;
+      categoryBreakdowns[category].participants += runners;
+      typeBreakdowns[type].participants += runners;
+      if (order.checked_in) metrics.checked_in_participants += runners;
+      if (order.kit_collected) metrics.kit_collected_participants += runners;
     }
 
-    if (payment) {
-      const method = payment.payment_method || 'unspecified';
-      if (!methodBreakdowns[method]) {
-        methodBreakdowns[method] = { payments: 0, amount: 0, status_counts: {} };
-      }
-      methodBreakdowns[method].payments += 1;
-      methodBreakdowns[method].status_counts[payment.payment_status] =
-        (methodBreakdowns[method].status_counts[payment.payment_status] || 0) + 1;
-      if (payment.payment_status === 'success') {
-        metrics.total_revenue += Number(payment.amount) || 0;
-        methodBreakdowns[method].amount += Number(payment.amount) || 0;
-      }
-      if (Object.prototype.hasOwnProperty.call(metrics.payment_counts, payment.payment_status)) {
-        metrics.payment_counts[payment.payment_status] += 1;
-      }
-    }
-
-    if (registration.createdAt) {
-      const day = new Date(registration.createdAt).toISOString().slice(0, 10);
+    if (order.createdAt) {
+      const day = new Date(order.createdAt).toISOString().slice(0, 10);
       dailyCounts.set(day, (dailyCounts.get(day) || 0) + 1);
     }
+  }
 
-    const ticket = registration.tickets.find((item) => item.check_in_status);
-    if (ticket) {
-      metrics.checked_in_participants += Number(ticket.team_size) || teamSize;
+  for (const payment of payments) {
+    const amount = Number(payment.amount) || 0;
+    const method = payment.payment_method || 'unspecified';
+    methodBreakdowns[method] = methodBreakdowns[method] || { payments: 0, amount: 0, status_counts: {} };
+    methodBreakdowns[method].payments += 1;
+    methodBreakdowns[method].status_counts[payment.payment_status] =
+      (methodBreakdowns[method].status_counts[payment.payment_status] || 0) + 1;
+
+    if (payment.payment_status === 'success') {
+      metrics.total_revenue += amount;
+      methodBreakdowns[method].amount += amount;
+      const order = orderById.get(String(payment.order_id));
+      if (order) {
+        categoryBreakdowns[order.race_category || 'Unspecified'].revenue += amount;
+        typeBreakdowns[order.type || 'Unspecified'].revenue += amount;
+      }
     }
+    if (Object.prototype.hasOwnProperty.call(metrics.payment_counts, payment.payment_status)) {
+      metrics.payment_counts[payment.payment_status] += 1;
+    }
+  }
+
+  for (const { _id: size, count } of shirtCounts) {
+    metrics.breakdowns.by_shirt_size[size] = count;
   }
 
   metrics.breakdowns.registrations_per_day = Array.from(dailyCounts, ([date, count]) => ({ date, count }))
@@ -132,6 +114,9 @@ const getEventReportMetrics = async (eventId, event) => {
   metrics.capacity_utilization = Number(event.capacity) > 0 ? metrics.total_participants / event.capacity : 0;
   metrics.attendance_rate = metrics.total_participants > 0
     ? metrics.checked_in_participants / metrics.total_participants
+    : 0;
+  metrics.kit_collection_rate = metrics.total_participants > 0
+    ? metrics.kit_collected_participants / metrics.total_participants
     : 0;
 
   return metrics;

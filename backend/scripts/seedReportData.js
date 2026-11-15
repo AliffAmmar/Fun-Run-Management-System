@@ -1,12 +1,20 @@
+// Seeds one "Report Demo Run <date>" event with a known mix of registrations, for demonstrating
+// event reports. Same scenario as before, now stored as Order + Participant + Payment.
+//
+// Usage (from backend/):  node scripts/seedReportData.js
+// Optional .env: REPORT_ORGANIZER_EMAIL (otherwise the first organizer account is used).
 require('dotenv').config();
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const Event = require('../models/Event');
 const User = require('../models/User');
-const Registration = require('../models/Registration');
+const Order = require('../models/Order');
+const Participant = require('../models/Participant');
 const Payment = require('../models/Payment');
-const Ticket = require('../models/Ticket');
+const { nextOrderNo, assignBibNumbers } = require('../utils/numbering');
+
+const DAY = 24 * 60 * 60 * 1000;
 
 const seedReportData = async () => {
   if (!process.env.MONGODB_URI) {
@@ -14,6 +22,8 @@ const seedReportData = async () => {
   }
 
   await mongoose.connect(process.env.MONGODB_URI);
+  await Promise.all([Order.init(), Participant.init()]);
+
   const organizerFilter = process.env.REPORT_ORGANIZER_EMAIL
     ? { email: process.env.REPORT_ORGANIZER_EMAIL.toLowerCase(), role: 'organizer' }
     : { role: 'organizer' };
@@ -22,28 +32,28 @@ const seedReportData = async () => {
     throw new Error('Create an organizer account first, or set REPORT_ORGANIZER_EMAIL');
   }
 
-  const participants = [];
+  const buyers = [];
   for (let index = 1; index <= 6; index += 1) {
     const email = `report-demo-${index}@example.com`;
-    let participant = await User.findOne({ email });
-    if (!participant) {
-      participant = await User.create({
+    let buyer = await User.findOne({ email });
+    if (!buyer) {
+      buyer = await User.create({
         name: `Report Demo Participant ${index}`,
         email,
         password: await bcrypt.hash('Run4FunDemo!2026', 10),
         role: 'participant',
       });
     }
-    if (participant.role !== 'participant') {
+    if (buyer.role !== 'participant') {
       throw new Error(`${email} exists but is not a participant account`);
     }
-    participants.push(participant);
+    buyers.push(buyer);
   }
 
   const event = await Event.create({
     event_name: `Report Demo Run ${new Date().toISOString().slice(0, 10)}`,
     description: 'Seeded event for demonstrating event reports.',
-    date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    date: new Date(Date.now() + 30 * DAY),
     location: 'Kuala Lumpur, Malaysia',
     categories: [
       { name: '5km', price: 40 },
@@ -53,113 +63,65 @@ const seedReportData = async () => {
     organizer_id: organizer._id,
     status: 'published',
   });
+  const price = Object.fromEntries(event.categories.map((c) => [c.name, c.price]));
 
-  const registrations = await Registration.create([
-    {
-      user_id: participants[0]._id,
-      event_id: event._id,
-      registration_type: 'individual',
-      race_category: '5km',
-      shirt_size: 'M',
-      emergency_contact: '0123456789',
-      team_size: 1,
-      total_amount: 40,
-      registration_status: 'confirmed',
-      createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    },
-    {
-      user_id: participants[1]._id,
-      event_id: event._id,
-      registration_type: 'team',
-      race_category: '5km',
-      emergency_contact: '0123456789',
-      team_name: 'Demo Striders',
-      team_size: 3,
-      shirt_sizes: { S: 1, L: 2 },
-      total_amount: 120,
-      registration_status: 'confirmed',
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    },
-    {
-      user_id: participants[2]._id,
-      event_id: event._id,
-      registration_type: 'individual',
-      race_category: '10km',
-      shirt_size: 'XL',
-      emergency_contact: '0123456789',
-      team_size: 1,
-      total_amount: 65,
-      registration_status: 'confirmed',
-      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    },
-    {
-      user_id: participants[3]._id,
-      event_id: event._id,
-      registration_type: 'team',
-      race_category: '10km',
-      emergency_contact: '0123456789',
-      team_name: 'Pending Pacers',
-      team_size: 2,
-      shirt_sizes: { M: 2 },
-      total_amount: 130,
-      registration_status: 'pending',
-    },
-    {
-      user_id: participants[4]._id,
-      event_id: event._id,
-      registration_type: 'individual',
-      race_category: '10km',
-      shirt_size: 'S',
-      emergency_contact: '0123456789',
-      team_size: 1,
-      total_amount: 65,
-      registration_status: 'cancelled',
-    },
-    {
-      user_id: participants[5]._id,
-      event_id: event._id,
-      registration_type: 'team',
-      race_category: '5km',
-      emergency_contact: '0123456789',
-      team_name: 'Refunded Runners',
-      team_size: 2,
-      shirt_sizes: { XS: 1, M: 1 },
-      total_amount: 80,
-      registration_status: 'cancelled',
-    },
-  ]);
-
-  const paymentData = [
-    ['success', 'credit_card'],
-    ['success', 'debit_card'],
-    ['success', 'online_banking'],
-    ['pending', 'wallet'],
-    ['failed', 'credit_card'],
-    ['refunded', 'wallet'],
+  // [buyer, type, group_name, category, shirt sizes, order status, payment status, method, checked in, days ago]
+  const scenario = [
+    [0, 'individual', null, '5km', ['M'], 'paid', 'success', 'credit_card', true, 3],
+    [1, 'group', 'Demo Striders', '5km', ['S', 'L', 'L'], 'paid', 'success', 'debit_card', true, 2],
+    [2, 'individual', null, '10km', ['XL'], 'paid', 'success', 'online_banking', false, 1],
+    [3, 'group', 'Pending Pacers', '10km', ['M', 'M'], 'pending', 'pending', 'wallet', false, 0],
+    [4, 'individual', null, '10km', ['S'], 'cancelled', 'failed', 'credit_card', false, 0],
+    [5, 'group', 'Refunded Runners', '5km', ['XS', 'M'], 'cancelled', 'refunded', 'wallet', false, 0],
   ];
-  await Payment.create(registrations.map((registration, index) => ({
-    registration_id: registration._id,
-    amount: registration.total_amount,
-    payment_status: paymentData[index][0],
-    payment_method: paymentData[index][1],
-    transaction_id: `REPORT_DEMO_${crypto.randomBytes(6).toString('hex')}`,
-  })));
 
-  const ticketData = [
-    { registration: registrations[0], checkedIn: true },
-    { registration: registrations[1], checkedIn: true },
-    { registration: registrations[2], checkedIn: false },
-  ];
-  await Ticket.create(ticketData.map(({ registration, checkedIn }) => ({
-    registration_id: registration._id,
-    qr_code: `report-demo-${registration._id}`,
-    ticket_code: `REPORT_${crypto.randomBytes(6).toString('hex').toUpperCase()}`,
-    registration_type: registration.registration_type,
-    team_size: registration.team_size,
-    shirt_sizes: registration.shirt_sizes,
-    check_in_status: checkedIn,
-    check_in_date: checkedIn ? new Date() : undefined,
-  })));
+  for (const [b, type, groupName, category, sizes, status, paymentStatus, method, checkedIn, daysAgo] of scenario) {
+    const buyer = buyers[b];
+    const createdAt = new Date(Date.now() - daysAgo * DAY);
+    const order = await Order.create({
+      order_no: await nextOrderNo(),
+      user_id: buyer._id,
+      event_id: event._id,
+      type,
+      group_name: groupName || undefined,
+      race_category: category,
+      participant_count: sizes.length,
+      total_amount: price[category] * sizes.length,
+      emergency_contact: '0123456789',
+      consent_given: type === 'group',
+      status,
+      paid_at: status === 'paid' ? createdAt : undefined,
+      ...(checkedIn && {
+        kit_collected: true,
+        kit_collected_at: new Date(),
+        kit_collected_by: organizer._id,
+        checked_in: true,
+        checked_in_at: new Date(),
+        checked_in_by: organizer._id,
+      }),
+      createdAt,
+    });
+
+    await Participant.insertMany(
+      sizes.map((shirtSize, i) => ({
+        order_id: order._id,
+        event_id: event._id,
+        name: type === 'individual' ? buyer.name : `${groupName} Runner ${i + 1}`,
+        email: type === 'individual' ? buyer.email : undefined,
+        shirt_size: shirtSize,
+      }))
+    );
+    if (status === 'paid') await assignBibNumbers(order);
+
+    await Payment.create({
+      order_id: order._id,
+      amount: order.total_amount,
+      payment_status: paymentStatus,
+      payment_method: method,
+      provider: 'mock',
+      transaction_id: `REPORT_DEMO_${crypto.randomBytes(6).toString('hex')}`,
+    });
+  }
 
   console.log(`Seeded report demo event ${event._id} for organizer ${organizer.email}`);
   await mongoose.disconnect();
