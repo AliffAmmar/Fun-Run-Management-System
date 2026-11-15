@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Navigation from './components/Navigation';
 
@@ -16,16 +16,21 @@ import EditEvent from './pages/EditEvent';
 import Notifications from './pages/Notifications';
 import Reports from './pages/Reports';
 import EventReport from './pages/EventReport';
+import Checkin from './pages/Checkin';
+import EventDay from './pages/EventDay';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  // Remember where the user was going (e.g. a scanned /checkin/FR-1012 link) so Login can
+  // send them back there.
+  return isAuthenticated ? children : <Navigate to="/login" state={{ from: location.pathname + location.search }} />;
 };
 
 const ReportRoleRoute = ({ children }) => {
@@ -58,6 +63,24 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <MyTickets />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/checkin/:orderNo"
+          element={
+            <ProtectedRoute>
+              <Checkin />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/event-day"
+          element={
+            <ProtectedRoute>
+              <ReportRoleRoute>
+                <EventDay />
+              </ReportRoleRoute>
             </ProtectedRoute>
           }
         />

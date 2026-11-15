@@ -108,36 +108,8 @@ const getUserTickets = async (req, res) => {
   }
 };
 
-const checkInTicket = async (req, res) => {
-  try {
-    const { ticket_code } = req.body;
-
-    const ticket = await Ticket.findOne({ ticket_code });
-    if (!ticket) {
-      return res.status(404).json({ message: 'Ticket not found' });
-    }
-
-    if (ticket.check_in_status) {
-      return res.status(400).json({ message: 'Ticket already checked in' });
-    }
-
-    // ===== NEW: Store check-in timestamp =====
-    ticket.check_in_status = true;
-    ticket.check_in_date = new Date();
-    await ticket.save();
-
-    res.json({
-      message: 'Check-in successful',
-      ticket,
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Failed to check in ticket', error: error.message });
-  }
-};
-
 module.exports = {
   generateTicket,
   getTicketByRegistration,
   getUserTickets,
-  checkInTicket,
 };

@@ -3,9 +3,8 @@ const {
   generateTicket,
   getTicketByRegistration,
   getUserTickets,
-  checkInTicket,
 } = require('../controllers/ticketController');
-const { authMiddleware, adminMiddleware } = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -14,7 +13,7 @@ router.post('/generate', authMiddleware, generateTicket);
 router.get('/registration/:registration_id', authMiddleware, getTicketByRegistration);
 router.get('/my-tickets', authMiddleware, getUserTickets);
 
-// Admin/Organizer routes
-router.post('/checkin', authMiddleware, adminMiddleware, checkInTicket);
+// Check-in moved to /api/checkin (only that event's organizer). The old POST /checkin let any
+// organizer check in any event's ticket.
 
 module.exports = router;
