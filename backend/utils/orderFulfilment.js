@@ -7,6 +7,9 @@
 const Order = require('../models/Order');
 const Event = require('../models/Event');
 const User = require('../models/User');
+const Participant = require('../models/Participant');
+const { sendEmail } = require('./email');
+const { orderConfirmationEmail } = require('./emailTemplates');
 const { assignBibNumbers } = require('./numbering');
 const { createNotification } = require('../controllers/notificationController');
 
@@ -36,7 +39,13 @@ async function fulfilOrder(orderId) {
     console.error(`Notifications failed for ${order.order_no}:`, err.message);
   }
 
-  // TODO(email step): send the confirmation email (utils/email.js) with the QR link.
+  // Confirmation email to the buyer (QR + bibs). Like notifications, a failed email never
+  // undoes the payment; the order and QR are always available in My Tickets.
+  try {
+    await sendConfirmationEmail(order);
+  } catch (err) {
+    console.error(`Confirmation email failed for ${order.order_no}:`, err.message);
+  }
 
   return { order, alreadyPaid: false };
 }
@@ -78,6 +87,17 @@ async function notifyPaid(order) {
       `Event: ${event.event_name}\nRace Category: ${order.race_category}`,
     { ...related, organizerId: event.organizer_id }
   );
+}
+
+async function sendConfirmationEmail(order) {
+  const [event, buyer, participants] = await Promise.all([
+    Event.findById(order.event_id),
+    User.findById(order.user_id),
+    Participant.find({ order_id: order._id }).sort({ bib_number: 1 }),
+  ]);
+  if (!event || !buyer?.email) return;
+  const email = await orderConfirmationEmail({ order, event, buyer, participants });
+  await sendEmail({ to: buyer.email, ...email });
 }
 
 module.exports = { fulfilOrder };

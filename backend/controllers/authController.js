@@ -1,7 +1,15 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const User = require('../models/User');
 const { generateToken } = require('../utils/jwt');
 const { createNotification } = require('./notificationController');
+const { sendEmail } = require('../utils/email');
+const { passwordResetEmail } = require('../utils/emailTemplates');
+
+const RESET_MINUTES = 30;
+const RESET_COOLDOWN_SECONDS = 60; // stops one address being flooded with reset emails
+const MIN_PASSWORD_LENGTH = 6; // same as the User model
+const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 const register = async (req, res) => {
   try {
@@ -65,7 +73,8 @@ const login = async (req, res) => {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
 
-    const user = await User.findOne({ email }).select('+password');
+    // Emails are stored lowercase (User model), so match case-insensitively.
+    const user = await User.findOne({ email: String(email).trim().toLowerCase() }).select('+password');
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -138,4 +147,66 @@ const updateProfile = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getProfile, updateProfile };
+// POST /api/auth/forgot-password  { email }
+// Always the same reply, whether or not the email exists (doesn't reveal who has an account).
+const forgotPassword = async (req, res) => {
+  const reply = () =>
+    res.json({ message: 'If that email is registered, a password reset link has been sent. It is valid for 30 minutes.' });
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ message: 'Please provide your email' });
+
+    const user = await User.findOne({ email }).select('+reset_password_requested_at');
+    if (!user) return reply();
+
+    const last = user.reset_password_requested_at;
+    if (last && Date.now() - last.getTime() < RESET_COOLDOWN_SECONDS * 1000) return reply();
+
+    const token = crypto.randomBytes(32).toString('hex');
+    user.reset_password_token_hash = hashToken(token);
+    user.reset_password_expires = new Date(Date.now() + RESET_MINUTES * 60 * 1000);
+    user.reset_password_requested_at = new Date();
+    await user.save();
+
+    try {
+      await sendEmail({ to: user.email, ...passwordResetEmail({ user, token, minutes: RESET_MINUTES }) });
+    } catch (err) {
+      console.error('Password reset email failed:', err.message);
+    }
+    return reply();
+  } catch (error) {
+    return res.status(500).json({ message: 'Could not start password reset', error: error.message });
+  }
+};
+
+// POST /api/auth/reset-password  { token, password }
+// Token works once and only within 30 minutes. Old password stops working.
+const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body || {};
+    if (!token || typeof token !== 'string') return res.status(400).json({ message: 'Reset link is invalid' });
+    if (!password || String(password).length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+    }
+
+    const hashed = await bcrypt.hash(String(password), await bcrypt.genSalt(10));
+    // Atomic: find by token hash + not expired, set the new password and remove the token,
+    // so the same link can't be used twice.
+    const user = await User.findOneAndUpdate(
+      { reset_password_token_hash: hashToken(token), reset_password_expires: { $gt: new Date() } },
+      {
+        $set: { password: hashed },
+        $unset: { reset_password_token_hash: '', reset_password_expires: '', reset_password_requested_at: '' },
+      },
+      { new: true }
+    );
+    if (!user) {
+      return res.status(400).json({ message: 'This reset link is invalid or has expired. Please request a new one.' });
+    }
+    return res.json({ message: 'Password updated. You can now log in with your new password.' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Could not reset password', error: error.message });
+  }
+};
+
+module.exports = { register, login, getProfile, updateProfile, forgotPassword, resetPassword };

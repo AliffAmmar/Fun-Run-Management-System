@@ -18,6 +18,8 @@ import Reports from './pages/Reports';
 import EventReport from './pages/EventReport';
 import Checkin from './pages/Checkin';
 import EventDay from './pages/EventDay';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -46,6 +48,8 @@ function AppContent() {
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/events" element={<EventsList />} />
         <Route path="/event/:id" element={<EventDetail />} />
 

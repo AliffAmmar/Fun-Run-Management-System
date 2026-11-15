@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
@@ -76,6 +76,11 @@ export default function Login() {
                 className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
                 placeholder="••••••••"
               />
+              <div className="text-right mt-2">
+                <Link to="/forgot-password" className="text-sm font-semibold text-orange-600 hover:text-orange-700">
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             <button
