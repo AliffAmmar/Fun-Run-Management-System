@@ -93,17 +93,25 @@ export default function ManageEvents() {
     <div className="bg-gradient-to-b from-slate-50 via-white to-orange-50 min-h-screen py-12 px-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-12">
+        <div className="flex flex-col gap-5 sm:flex-row sm:justify-between sm:items-center mb-12">
           <div>
             <h1 className="text-4xl font-black text-slate-900 mb-2">My Events</h1>
             <p className="text-lg text-slate-600">Create, manage and track your running events</p>
           </div>
-          <button
-            onClick={() => navigate('/create-event')}
-            className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition duration-300 transform hover:scale-105 text-lg uppercase tracking-wide"
-          >
-            + Create Event
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => navigate('/reports')}
+              className="border-2 border-orange-600 text-orange-700 hover:bg-orange-50 font-bold py-3 px-6 rounded-full transition duration-300 text-sm uppercase tracking-wide"
+            >
+              Event Reports
+            </button>
+            <button
+              onClick={() => navigate('/create-event')}
+              className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition duration-300 transform hover:scale-105 text-lg uppercase tracking-wide"
+            >
+              + Create Event
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -190,6 +198,12 @@ export default function ManageEvents() {
 
                   {/* Action Buttons */}
                   <div className="flex flex-col gap-3 p-8 bg-gradient-to-br from-slate-50 to-orange-50 border-t-2 md:border-t-0 md:border-l-2 border-slate-200 justify-center">
+                    <button
+                      onClick={() => navigate(`/reports/${event._id}`)}
+                      className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 uppercase tracking-wide"
+                    >
+                      View Report
+                    </button>
                     <button
                       onClick={() => navigate(`/edit-event/${event._id}`)}
                       className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 font-semibold uppercase tracking-wide"

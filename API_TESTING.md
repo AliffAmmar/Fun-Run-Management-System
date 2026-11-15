@@ -416,6 +416,103 @@ Response:
 
 ---
 
+## Report Endpoints (Organizer/Admin Only)
+
+Use the JWT for an event's organizer or an admin. An organizer can only access their own events; another organizer receives `403 Forbidden` even though organizers can use general admin middleware elsewhere.
+
+### 1. Get Report Overview
+```http
+GET /reports/overview
+Authorization: Bearer {token}
+
+Response:
+{
+  "events": [
+    {
+      "_id": "EVENT_ID",
+      "event_name": "Fun Run 2026",
+      "registration_count": 12,
+      "total_participants": 18,
+      "total_revenue": 720,
+      "payment_counts": { "pending": 1, "failed": 0, "refunded": 0 },
+      "capacity_utilization": 0.18,
+      "checked_in_participants": 4,
+      "attendance_rate": 0.22,
+      "breakdowns": { "by_race_category": {}, "by_registration_type": {}, "by_payment_method": {}, "by_shirt_size": {}, "registrations_per_day": [] }
+    }
+  ]
+}
+```
+
+### 2. Get Live Event Summary
+```http
+GET /reports/event/{eventId}/summary
+Authorization: Bearer {token}
+
+Response:
+{
+  "event": { "_id": "EVENT_ID", "event_name": "Fun Run 2026", "capacity": 100 },
+  "metrics": {
+    "registration_count": 12,
+    "total_participants": 18,
+    "total_revenue": 720,
+    "payment_counts": { "pending": 1, "failed": 0, "refunded": 0 },
+    "breakdowns": {
+      "by_race_category": { "5km": { "participants": 18, "revenue": 720 } },
+      "by_registration_type": {},
+      "by_payment_method": {},
+      "by_shirt_size": { "M": 8 },
+      "registrations_per_day": [{ "date": "2026-06-15", "count": 4 }]
+    },
+    "capacity_utilization": 0.18,
+    "checked_in_participants": 4,
+    "attendance_rate": 0.22,
+    "capacity": 100
+  }
+}
+```
+
+### 3. Export Event Report
+```http
+POST /reports/event/{eventId}/export
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{ "format": "csv" }
+```
+Use `{ "format": "pdf" }` for a PDF. The response is a streamed attachment with a `Content-Disposition` filename. A `Report` snapshot is saved for each successful export.
+
+### 4. Get Event Report History
+```http
+GET /reports/event/{eventId}/history
+Authorization: Bearer {token}
+
+Response:
+{
+  "reports": [
+    {
+      "_id": "REPORT_ID",
+      "event_id": "EVENT_ID",
+      "generated_by": { "name": "Organizer", "email": "organizer@example.com" },
+      "total_participants": 18,
+      "total_revenue": 720,
+      "export_format": "csv",
+      "export_file": "event-report-EVENT_ID-...csv",
+      "createdAt": "2026-06-15T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+### Authorization Checks
+1. As an organizer, request your own event summary; expect `200`.
+2. As a different organizer, request that event's summary, export, and history; expect `403` for each.
+3. As an admin, request the overview and another organizer's report; expect access.
+4. As a participant, request the overview; expect `403`. The frontend redirects participants away from report pages.
+5. Try an invalid event ID; expect `400`. Try a valid but nonexistent ID; expect `404`.
+
+---
+
 ## Error Responses
 
 ### 400 Bad Request

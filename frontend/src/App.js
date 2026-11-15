@@ -14,6 +14,8 @@ import CreateEvent from './pages/CreateEvent';
 import ManageEvents from './pages/ManageEvents';
 import EditEvent from './pages/EditEvent';
 import Notifications from './pages/Notifications';
+import Reports from './pages/Reports';
+import EventReport from './pages/EventReport';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -24,6 +26,11 @@ const ProtectedRoute = ({ children }) => {
   }
 
   return isAuthenticated ? children : <Navigate to="/login" />;
+};
+
+const ReportRoleRoute = ({ children }) => {
+  const { user } = useAuth();
+  return ['organizer', 'admin'].includes(user?.role) ? children : <Navigate to="/events" replace />;
 };
 
 function AppContent() {
@@ -59,6 +66,26 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Notifications />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports"
+          element={
+            <ProtectedRoute>
+              <ReportRoleRoute>
+                <Reports />
+              </ReportRoleRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reports/:eventId"
+          element={
+            <ProtectedRoute>
+              <ReportRoleRoute>
+                <EventReport />
+              </ReportRoleRoute>
             </ProtectedRoute>
           }
         />

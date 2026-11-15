@@ -9,6 +9,7 @@ const registrationRoutes = require('./routes/registrations');
 const paymentRoutes = require('./routes/payments');
 const ticketRoutes = require('./routes/tickets');
 const notificationRoutes = require('./routes/notifications');
+const reportRoutes = require('./routes/reports');
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use('/api/registrations', registrationRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

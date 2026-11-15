@@ -21,6 +21,18 @@ export default function CreateEvent() {
   const [currentCategory, setCurrentCategory] = useState('5K');
   const [currentPrice, setCurrentPrice] = useState('');
 
+  // Get today's date in the format required for datetime-local input (using local timezone)
+  const getMinDate = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const date = String(today.getDate()).padStart(2, '0');
+    const hours = String(today.getHours()).padStart(2, '0');
+    const minutes = String(today.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${date}T${hours}:${minutes}`;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -174,6 +186,7 @@ export default function CreateEvent() {
                     name="date"
                     value={formData.date}
                     onChange={handleChange}
+                    min={getMinDate()}
                     required
                     className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition"
                   />
