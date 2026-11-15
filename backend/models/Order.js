@@ -88,6 +88,10 @@ const orderSchema = new mongoose.Schema(
     checked_in: { type: Boolean, default: false },
     checked_in_at: Date,
     checked_in_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+    // Set once the buyer has been emailed "certificates are ready in My Tickets" (for members
+    // without an email). Guarantees one notice per order.
+    certificates_notice_sent_at: Date,
   },
   { timestamps: true }
 );

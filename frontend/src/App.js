@@ -20,6 +20,8 @@ import Checkin from './pages/Checkin';
 import EventDay from './pages/EventDay';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import EventCertificates from './pages/EventCertificates';
+import VerifyCertificate from './pages/VerifyCertificate';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -50,6 +52,7 @@ function AppContent() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/verify/:certificateNo" element={<VerifyCertificate />} />
         <Route path="/events" element={<EventsList />} />
         <Route path="/event/:id" element={<EventDetail />} />
 
@@ -75,6 +78,16 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Checkin />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/certificates/:eventId"
+          element={
+            <ProtectedRoute>
+              <ReportRoleRoute>
+                <EventCertificates />
+              </ReportRoleRoute>
             </ProtectedRoute>
           }
         />

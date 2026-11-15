@@ -2,7 +2,8 @@
 //
 // Usage (from backend/):  node scripts/seedDemoData.js
 //
-// - Creates 2 upcoming "[Demo] ..." events owned by an existing organizer
+// - Creates 2 upcoming "[Demo] ..." events + 1 that took place last week (to try certificates),
+//   owned by an existing organizer
 //   (DEMO_ORGANIZER_EMAIL in .env, otherwise the first organizer found).
 // - Creates individual + group orders with realistic members, bib numbers, and a mix of
 //   paid / pending / expired / cancelled / kit-collected, using your existing participant accounts
@@ -16,6 +17,9 @@ const Event = require('../models/Event');
 const Order = require('../models/Order');
 const Participant = require('../models/Participant');
 const Counter = require('../models/Counter');
+const Certificate = require('../models/Certificate');
+const CertificateBackground = require('../models/CertificateBackground');
+const CheckinLog = require('../models/CheckinLog');
 const { nextOrderNo, assignBibNumbers } = require('../utils/numbering');
 
 const DEMO_PREFIX = '[Demo] ';
@@ -42,9 +46,8 @@ const SIZES = ['XS', 'S', 'S', 'M', 'M', 'M', 'L', 'L', 'L', 'XL', 'XL', 'XXL'];
 function memberName() {
   const first = pick(FIRST_NAMES);
   if (CHINESE_GIVEN.includes(first.split(' ')[0])) return first;
-  if (['Arjun', 'Kavitha', 'Suresh', 'Priya', 'Ravi', 'Deepa'].includes(first)) {
-    return `${first} a/l ${pick(INDIAN_SURNAMES)}`;
-  }
+  if (['Arjun', 'Suresh', 'Ravi'].includes(first)) return `${first} a/l ${pick(INDIAN_SURNAMES)}`; // anak lelaki
+  if (['Kavitha', 'Priya', 'Deepa'].includes(first)) return `${first} a/p ${pick(INDIAN_SURNAMES)}`; // anak perempuan
   const isFemale = /Aisyah|Aminah|Farah|Izzah|Syafiqah/.test(first);
   return `${first} ${isFemale ? 'binti' : 'bin'} ${pick(MALAY_SURNAMES)}`;
 }
@@ -62,7 +65,7 @@ function makeMembers(n) {
 }
 
 async function createOrder({ event, buyer, type, group_name, race_category, members, status,
-  expired = false, kitCollectedBy = null }) {
+  expired = false, kitCollectedBy = null, checkedInBy = null }) {
   const price = event.categories.find((c) => c.name === race_category).price;
   const now = new Date();
 
@@ -84,6 +87,11 @@ async function createOrder({ event, buyer, type, group_name, race_category, memb
       kit_collected: true,
       kit_collected_at: now,
       kit_collected_by: kitCollectedBy._id,
+    }),
+    ...(checkedInBy && {
+      checked_in: true,
+      checked_in_at: now,
+      checked_in_by: checkedInBy._id,
     }),
   });
 
@@ -110,6 +118,9 @@ async function main() {
   // ---- Remove previous demo data -------------------------------------------
   const oldEvents = await Event.find({ event_name: { $regex: '^\\[Demo\\] ' } });
   const oldIds = oldEvents.map((e) => e._id);
+  await Certificate.deleteMany({ event_id: { $in: oldIds } });
+  await CertificateBackground.deleteMany({ event_id: { $in: oldIds } });
+  await CheckinLog.deleteMany({ event_id: { $in: oldIds } });
   await Participant.deleteMany({ event_id: { $in: oldIds } });
   await Order.deleteMany({ event_id: { $in: oldIds } });
   await Counter.deleteMany({ key: { $in: oldIds.map((id) => `bib:${id}`) } });
@@ -145,6 +156,21 @@ async function main() {
     status: 'published',
   });
 
+  // Took place last week and is ready to be "completed" → try certificates on this one.
+  const pastRun = await Event.create({
+    event_name: `${DEMO_PREFIX}Bukit Kiara Morning Run 2026`,
+    description: 'Demo event that already took place: use it to try "Mark event as completed" and certificates.',
+    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    location: 'Taman Bukit Kiara, Kuala Lumpur',
+    categories: [
+      { name: '5km', price: 30 },
+      { name: '10km', price: 40 },
+    ],
+    capacity: 150,
+    organizer_id: organizer._id,
+    status: 'published',
+  });
+
   // ---- Orders ---------------------------------------------------------------
   const self = (u, size) => [{ name: u.name, email: u.email, shirt_size: size }];
 
@@ -167,11 +193,17 @@ async function main() {
       race_category: '1km', members: makeMembers(5), status: 'paid' }),
     await createOrder({ event: familyRun, buyer: buyer(2), type: 'individual', race_category: '5km',
       members: self(buyer(2), 'S'), status: 'paid' }),
+    await createOrder({ event: pastRun, buyer: buyer(0), type: 'individual', race_category: '10km',
+      members: self(buyer(0), 'M'), status: 'paid', kitCollectedBy: organizer, checkedInBy: organizer }),
+    await createOrder({ event: pastRun, buyer: buyer(1), type: 'group', group_name: 'Geng Larian Kiara',
+      race_category: '5km', members: makeMembers(6), status: 'paid', kitCollectedBy: organizer, checkedInBy: organizer }),
+    await createOrder({ event: pastRun, buyer: buyer(2), type: 'group', group_name: 'Pejabat Sihat',
+      race_category: '5km', members: makeMembers(4), status: 'paid', kitCollectedBy: organizer }),
   ];
 
   // ---- Summary --------------------------------------------------------------
   console.log(`Organizer: ${organizer.name} (${organizer.email})\n`);
-  for (const event of [charityRun, familyRun]) {
+  for (const event of [charityRun, familyRun, pastRun]) {
     const held = await Order.countHeldParticipants(event._id);
     console.log(`${event.event_name} — ${held}/${event.capacity} slots taken`);
     for (const o of orders.filter((x) => String(x.event_id) === String(event._id))) {

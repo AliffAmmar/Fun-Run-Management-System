@@ -120,4 +120,47 @@ function passwordResetEmail({ user, token, minutes }) {
   return { subject, text, html, attachments: [] };
 }
 
-module.exports = { orderConfirmationEmail, passwordResetEmail };
+// A participant's own certificate (PDF attached).
+function certificateEmail({ participant, event, certificateNo, pdf }) {
+  const subject = `Your certificate: ${event.event_name}`;
+  const text = [
+    `Hi ${participant.name},`,
+    '',
+    `Thank you for taking part in ${event.event_name}! Your certificate of participation is attached.`,
+    '',
+    `Certificate no.: ${certificateNo}`,
+    `Anyone can check it is genuine at ${appUrl()}/verify/${certificateNo}`,
+  ].join('\n');
+  const html = layout(
+    'Your certificate',
+    `<p>Hi ${escapeHtml(participant.name)},</p>
+     <p>Thank you for taking part in <b>${escapeHtml(event.event_name)}</b>! Your certificate of participation is attached.</p>
+     <p style="font-size:13px;color:#64748b">Certificate no. <b>${escapeHtml(certificateNo)}</b>. Anyone can check it is genuine at
+     <a href="${appUrl()}/verify/${encodeURIComponent(certificateNo)}">${appUrl()}/verify/${escapeHtml(certificateNo)}</a>.</p>`
+  );
+  return { subject, text, html, attachments: [{ filename: `${certificateNo}.pdf`, content: pdf, contentType: 'application/pdf' }] };
+}
+
+// One notice per order to the buyer, for members who have no email address.
+function certificatesReadyEmail({ buyer, order, event, count }) {
+  const link = `${appUrl()}/my-tickets?order=${encodeURIComponent(order.order_no)}`;
+  const who = order.type === 'group' ? `${count} member(s) of ${order.group_name}` : 'your registration';
+  const subject = `Certificates ready: ${event.event_name}`;
+  const text = [
+    `Hi ${buyer.name},`,
+    '',
+    `Certificates for ${who} (${order.order_no}) are ready.`,
+    'They have no email address on file, so please download them from My Tickets and pass them on:',
+    link,
+  ].join('\n');
+  const html = layout(
+    'Certificates ready',
+    `<p>Hi ${escapeHtml(buyer.name)},</p>
+     <p>Certificates for ${escapeHtml(who)} (<b>${escapeHtml(order.order_no)}</b>) from <b>${escapeHtml(event.event_name)}</b> are ready.</p>
+     <p>They have no email address on file, so please download them from My Tickets and pass them on.</p>
+     <p style="margin-top:24px"><a href="${link}" style="background:#ea580c;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Open My Tickets</a></p>`
+  );
+  return { subject, text, html, attachments: [] };
+}
+
+module.exports = { orderConfirmationEmail, passwordResetEmail, certificateEmail, certificatesReadyEmail };

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import apiClient from '../../utils/apiClient';
 import { checkinUrl } from '../../utils/links';
+import { downloadFile, blobErrorMessage } from '../../utils/download';
 import ShirtSizeSummary from '../registration/ShirtSizeSummary';
 
 const money = (n) => `RM ${Number(n || 0).toFixed(2)}`;
@@ -43,6 +44,15 @@ export default function OrderCard({ order, paymentMode, onShowQr, onChanged, hig
     }
   };
   const pay = () => act(() => apiClient.post(`/payments/orders/${order.order_no}/mock`, {}));
+  const withCerts = (order.participants || []).filter((p) => p.certificate_no);
+  const download = async (path, filename) => {
+    setError('');
+    try {
+      await downloadFile(path, filename);
+    } catch (err) {
+      setError(await blobErrorMessage(err));
+    }
+  };
   const cancel = () => {
     if (!window.confirm(`Cancel registration ${order.order_no}? The slots will be released.`)) return;
     act(() => apiClient.delete(`/orders/${order.order_no}`));
@@ -112,6 +122,51 @@ export default function OrderCard({ order, paymentMode, onShowQr, onChanged, hig
                 )}
               </p>
             )
+          )}
+
+          {/* Certificates (after the organizer completes the event) */}
+          {withCerts.length > 0 && (
+            <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 space-y-2">
+              <p className="font-bold text-green-900">🎉 Certificates are ready</p>
+              {isGroup ? (
+                <>
+                  <button
+                    onClick={() => download(`/certificates/orders/${order.order_no}/zip`, `${order.order_no}-certificates.zip`)}
+                    disabled={busy}
+                    className="bg-green-700 hover:bg-green-800 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50"
+                  >
+                    Download all ({withCerts.length}) as ZIP
+                  </button>
+                  <p className="text-sm text-green-900">
+                    Members with an email received theirs by email. Please pass the others on.
+                  </p>
+                  <ul className="text-sm divide-y divide-green-100 max-h-60 overflow-y-auto">
+                    {withCerts.map((p) => (
+                      <li key={p._id} className="flex justify-between gap-3 py-1.5">
+                        <span className="text-slate-800">
+                          {p.name}
+                          {!p.email && <span className="text-slate-500"> · no email</span>}
+                        </span>
+                        <button
+                          onClick={() => download(`/certificates/${p.certificate_no}/pdf`, `${p.certificate_no}.pdf`)}
+                          className="font-bold text-green-800 hover:underline"
+                        >
+                          PDF
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <button
+                  onClick={() => download(`/certificates/${withCerts[0].certificate_no}/pdf`, `${withCerts[0].certificate_no}.pdf`)}
+                  disabled={busy}
+                  className="bg-green-700 hover:bg-green-800 text-white font-bold py-2 px-4 rounded-lg disabled:opacity-50"
+                >
+                  Download my certificate
+                </button>
+              )}
+            </div>
           )}
 
           {/* Unpaid actions */}

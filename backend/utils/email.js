@@ -11,6 +11,23 @@
 //            Switching provider = changing these values only.
 // In tests (NODE_ENV=test) emails are kept in memory: see sentEmails / clearSentEmails.
 const nodemailer = require('nodemailer');
+const Counter = require('../models/Counter');
+
+// Daily sending cap of the provider (Brevo free plan: 300/day). Used by the certificate sender to
+// stop before the cap and continue the next day. Counted per UTC day.
+const dailyLimit = () => Number(process.env.EMAIL_DAILY_LIMIT) || 300;
+const todayKey = () => `emails:${new Date().toISOString().slice(0, 10)}`;
+async function emailsSentToday() {
+  const c = await Counter.findOne({ key: todayKey() });
+  return c ? c.seq : 0;
+}
+async function countSent() {
+  try {
+    await Counter.updateOne({ key: todayKey() }, { $inc: { seq: 1 } }, { upsert: true });
+  } catch (err) {
+    console.error('[email] could not update daily count:', err.message);
+  }
+}
 
 const sentEmails = []; // test mode only
 let transporterPromise = null;
@@ -62,6 +79,7 @@ async function sendEmail({ to, subject, text, html, attachments = [] }) {
   switch (mode()) {
     case 'test':
       sentEmails.push(message);
+      await countSent();
       return { mode: 'test' };
     case 'console':
       console.log(
@@ -73,6 +91,7 @@ async function sendEmail({ to, subject, text, html, attachments = [] }) {
     default: {
       const transporter = await getTransporter();
       const info = await transporter.sendMail(message);
+      await countSent();
       const previewUrl = nodemailer.getTestMessageUrl(info) || undefined;
       if (previewUrl) console.log(`[email] Preview "${subject}" → ${previewUrl}`);
       return { mode: mode(), messageId: info.messageId, previewUrl };
@@ -86,6 +105,8 @@ const escapeHtml = (s) =>
 
 module.exports = {
   sendEmail,
+  emailsSentToday,
+  dailyLimit,
   appUrl,
   escapeHtml,
   sentEmails,

@@ -69,3 +69,21 @@ test('a pending order past its hold time shows as expired with a re-register lin
   expect(text).toMatch('Register again');
   expect(text).not.toMatch(/Pay RM/);
 });
+
+test('after the event is completed, a group order offers each certificate and a ZIP', () => {
+  const text = render({
+    ...base,
+    status: 'paid',
+    participants: [
+      { ...base.participants[0], email: 'a@x.com', certificate_no: 'FR-C-AAAA1111', certificate_status: 'sent' },
+      { ...base.participants[1], certificate_no: 'FR-C-BBBB2222', certificate_status: 'skipped_no_email' },
+    ],
+  });
+  expect(text).toMatch('Certificates are ready');
+  expect(text).toMatch('Download all (2) as ZIP');
+  expect(text).toMatch('Siti · no email');
+});
+
+test('no certificate section before the event is completed', () => {
+  expect(render({ ...base, status: 'paid' })).not.toMatch('Certificates are ready');
+});

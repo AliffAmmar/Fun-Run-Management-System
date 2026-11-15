@@ -61,6 +61,8 @@ export default function ManageEvents() {
         return 'bg-green-100 border-green-300 text-green-800';
       case 'closed':
         return 'bg-red-100 border-red-300 text-red-800';
+      case 'completed':
+        return 'bg-blue-100 border-blue-300 text-blue-800';
       default:
         return 'bg-gray-100 border-gray-300 text-gray-800';
     }
@@ -204,6 +206,14 @@ export default function ManageEvents() {
                     >
                       View Report
                     </button>
+                    {event.status !== 'draft' && (
+                      <button
+                        onClick={() => navigate(`/certificates/${event._id}`)}
+                        className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 uppercase tracking-wide"
+                      >
+                        Certificates
+                      </button>
+                    )}
                     <button
                       onClick={() => navigate(`/edit-event/${event._id}`)}
                       className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 font-semibold uppercase tracking-wide"

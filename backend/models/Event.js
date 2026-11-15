@@ -43,8 +43,23 @@ const eventSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['draft', 'published', 'closed'],
+      // 'completed' = organizer marked the event as finished; certificates are generated then.
+      enum: ['draft', 'published', 'closed', 'completed'],
       default: 'draft',
+    },
+    completed_at: Date,
+    // ---- Certificates (see controllers/certificateController.js) ----
+    // Who gets a certificate. Undecided with the collaborator, so it's a per-event setting.
+    certificate_eligibility: {
+      type: String,
+      enum: ['all_paid', 'kit_collected', 'checked_in'],
+      default: 'all_paid',
+    },
+    // Text colour on the certificate: dark text for light backgrounds, light for dark ones.
+    certificate_text_color: {
+      type: String,
+      enum: ['dark', 'light'],
+      default: 'dark',
     },
   },
   { timestamps: true }

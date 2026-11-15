@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Participant = require('../models/Participant');
 const Event = require('../models/Event');
+const Certificate = require('../models/Certificate');
 const { nextOrderNo } = require('../utils/numbering');
 const { validateParticipants, findDuplicateEmailWarnings } = require('../utils/orderValidation');
 
@@ -28,6 +29,18 @@ async function withParticipants(orders) {
   const participants = await Participant.find({ order_id: { $in: list.map((o) => o._id) } })
     .sort({ bib_number: 1, _id: 1 })
     .lean();
+  // Certificates (after the event is completed): number + status per participant.
+  const certs = await Certificate.find({ participant_id: { $in: participants.map((p) => p._id) } })
+    .select('participant_id certificate_no status')
+    .lean();
+  const certByParticipant = new Map(certs.map((c) => [String(c.participant_id), c]));
+  participants.forEach((p) => {
+    const c = certByParticipant.get(String(p._id));
+    if (c) {
+      p.certificate_no = c.certificate_no;
+      p.certificate_status = c.status;
+    }
+  });
 
   const byOrder = new Map();
   participants.forEach((p) => {
