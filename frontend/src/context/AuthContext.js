@@ -59,6 +59,8 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    // Replace the stored user after a profile change (e.g. new name shows in the top bar).
+    updateUser: setUser,
     isAuthenticated: !!user,
   };
 

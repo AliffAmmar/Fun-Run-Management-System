@@ -103,49 +103,86 @@ const login = async (req, res) => {
   }
 };
 
+const profileJson = (user) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  phone_no: user.phone_no,
+  role: user.role,
+  createdAt: user.createdAt,
+});
+
+const MAX_NAME_LENGTH = 100;
+const PHONE_RE = /^[0-9+\-\s()]{6,20}$/;
+
 const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
-
-    res.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone_no: user.phone_no,
-        role: user.role,
-      },
-    });
+    res.json({ user: profileJson(user) });
   } catch (error) {
     res.status(500).json({ message: 'Failed to get profile', error: error.message });
   }
 };
 
+// PUT /api/auth/profile  { name?, phone_no? }   (email and role can't be changed here)
 const updateProfile = async (req, res) => {
   try {
-    const { name, phone_no } = req.body;
+    const update = {};
+    if (req.body.name !== undefined) {
+      const name = String(req.body.name).trim().replace(/\s+/g, ' ');
+      if (!name || name.length > MAX_NAME_LENGTH) {
+        return res.status(400).json({ message: `Name must be 1–${MAX_NAME_LENGTH} characters` });
+      }
+      update.name = name;
+    }
+    if (req.body.phone_no !== undefined) {
+      const phone = String(req.body.phone_no || '').trim();
+      if (phone && !PHONE_RE.test(phone)) {
+        return res.status(400).json({ message: 'Please enter a valid phone number' });
+      }
+      update.phone_no = phone || null;
+    }
 
-    const user = await User.findByIdAndUpdate(
-      req.user.userId,
-      { name, phone_no },
-      { new: true }
-    );
+    const user = await User.findByIdAndUpdate(req.user.userId, update, { new: true });
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    res.json({
-      message: 'Profile updated successfully',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone_no: user.phone_no,
-        role: user.role,
-      },
-    });
+    res.json({ message: 'Profile updated successfully', user: profileJson(user) });
   } catch (error) {
     res.status(500).json({ message: 'Failed to update profile', error: error.message });
+  }
+};
+
+// PUT /api/auth/password  { current_password, new_password }
+const changePassword = async (req, res) => {
+  try {
+    const { current_password: current, new_password: next } = req.body || {};
+    if (!current || !next) {
+      return res.status(400).json({ message: 'Please enter your current and new password' });
+    }
+    if (String(next).length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ message: `New password must be at least ${MIN_PASSWORD_LENGTH} characters` });
+    }
+    if (current === next) {
+      return res.status(400).json({ message: 'The new password must be different from the current one' });
+    }
+
+    const user = await User.findById(req.user.userId).select('+password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!(await bcrypt.compare(String(current), user.password))) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    user.password = await bcrypt.hash(String(next), await bcrypt.genSalt(10));
+    // Any pending "forgot password" link stops working.
+    user.reset_password_token_hash = undefined;
+    user.reset_password_expires = undefined;
+    await user.save();
+    res.json({ message: 'Password changed' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to change password', error: error.message });
   }
 };
 
@@ -211,4 +248,4 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getProfile, updateProfile, forgotPassword, resetPassword };
+module.exports = { register, login, getProfile, updateProfile, changePassword, forgotPassword, resetPassword };

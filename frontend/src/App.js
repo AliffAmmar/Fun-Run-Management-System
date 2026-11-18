@@ -23,6 +23,7 @@ import ResetPassword from './pages/ResetPassword';
 import EventCertificates from './pages/EventCertificates';
 import VerifyCertificate from './pages/VerifyCertificate';
 import AdminUsers from './pages/AdminUsers';
+import Profile from './pages/Profile';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -94,6 +95,14 @@ function AppContent() {
               <ReportRoleRoute>
                 <EventCertificates />
               </ReportRoleRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
             </ProtectedRoute>
           }
         />
