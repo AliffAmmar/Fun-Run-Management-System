@@ -48,7 +48,7 @@ async function orderConfirmationEmail({ order, event, buyer, participants }) {
     runnersText,
     '',
     isGroup
-      ? 'Kit collection: one QR code covers the whole group. The group leader collects all kits and must bring their IC.'
+      ? 'Kit collection: one QR code covers the whole group. Show it at the kit counter with your IC. You can collect for everyone, or runners can collect separately with the same QR (staff tick each runner).'
       : 'Kit collection: show the QR code in this email or in My Tickets, and bring your IC.',
     `My Tickets: ${ticketsLink}`,
   ]
@@ -73,7 +73,7 @@ async function orderConfirmationEmail({ order, event, buyer, participants }) {
        <img src="cid:order-qr" alt="QR code for ${escapeHtml(order.order_no)}" width="220" height="220" style="border:1px solid #e2e8f0;border-radius:8px">
        <div style="font-family:monospace;font-size:20px;font-weight:bold;margin-top:8px">${escapeHtml(order.order_no)}</div>
        <div style="font-size:13px;color:#475569;margin-top:4px">
-         ${isGroup ? 'One QR for the whole group. The leader collects all kits and must bring their IC.' : 'Show this at kit collection and bring your IC.'}
+         ${isGroup ? 'One QR for the whole group. Show it at the kit counter with your IC. You can collect for everyone, or runners can come separately with the same QR.' : 'Show this at kit collection and bring your IC.'}
        </div>
      </div>
      <p style="font-weight:bold;margin-bottom:4px">${isGroup ? `Bib numbers (${escapeHtml(bibRange)})` : 'Bib number'}</p>

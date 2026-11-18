@@ -441,7 +441,11 @@ export default function EventRegistration() {
                     />
 
                     <div>
-                      <p className="font-bold text-slate-800 mb-3">…or type the members in</p>
+                      <p className="font-bold text-slate-800 mb-1">…or type the members in</p>
+                      <p className="text-sm text-slate-600 mb-3">
+                        Email is optional. Runners with an email get their certificate sent to them after the event;
+                        for the others, you download it from My Tickets.
+                      </p>
                       <MemberTable
                         rows={rows}
                         setRows={setRowsAndClearServerErrors}
@@ -567,7 +571,8 @@ export default function EventRegistration() {
 
                     <p className="text-slate-600 text-sm">
                       Your QR code for kit collection will be in My Tickets.
-                      {order.type === 'group' && ' One QR covers the whole group: the leader collects all kits.'}
+                      {order.type === 'group' &&
+                        ' One QR covers the whole group: you can collect for everyone, or runners can come separately with the same QR.'}
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-3">

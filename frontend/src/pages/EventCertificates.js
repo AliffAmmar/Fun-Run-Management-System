@@ -6,8 +6,8 @@ import { downloadFile, openFile, blobErrorMessage } from '../utils/download';
 // Organizer: certificate design, "Mark event as completed", sending progress, re-send.
 const ELIGIBILITY = [
   ['all_paid', 'Every paid runner', 'Everyone in a paid registration gets a certificate.'],
-  ['kit_collected', 'Collected their kit', 'Only registrations whose kits were collected.'],
-  ['checked_in', 'Checked in on event day', 'Only registrations checked in on the day.'],
+  ['kit_collected', 'Collected their kit', 'Only runners ticked as having collected their kit.'],
+  ['checked_in', 'Checked in on event day', 'Only runners ticked as checked in on the day.'],
 ];
 const STATUS = {
   pending: ['Sending…', 'bg-yellow-100 text-yellow-800'],

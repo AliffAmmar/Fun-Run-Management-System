@@ -73,34 +73,45 @@ export function shirtSizeCounts(rows) {
   return counts;
 }
 
-// Parses a CSV File with columns name,email,shirt_size (header required, any order, any case).
-// Resolves { rows, problems } where problems are file-level issues (missing columns, etc.).
-export function parseParticipantCsv(file) {
-  return new Promise((resolve) => {
-    Papa.parse(file, {
+const parseWith = (input, encoding) =>
+  new Promise((resolve) => {
+    Papa.parse(input, {
       header: true,
       skipEmptyLines: 'greedy',
-      transformHeader: (h) => h.replace(/^﻿/, '').trim().toLowerCase().replace(/[\s-]+/g, '_'),
-      complete: ({ data, meta }) => {
-        const missing = ['name', 'shirt_size'].filter((c) => !meta.fields?.includes(c));
-        if (missing.length > 0) {
-          resolve({
-            rows: [],
-            problems: [
-              `The file is missing the column(s): ${missing.join(', ')}. ` +
-                `The first line must be: ${CSV_COLUMNS.join(',')}`,
-            ],
-          });
-          return;
-        }
-        const rows = data
-          .map((d) => ({ name: d.name || '', email: d.email || '', shirt_size: d.shirt_size || '' }))
-          .filter((r) => !isBlankRow(r));
-        resolve({ rows, problems: [] });
-      },
-      error: (err) => resolve({ rows: [], problems: [`Could not read the file: ${err.message}`] }),
+      encoding, // only used for File/Blob input
+      transformHeader: (h) => h.replace(/^\uFEFF/, '').trim().toLowerCase().replace(/[\s-]+/g, '_'),
+      complete: (result) => resolve(result),
+      error: (err) => resolve({ error: err }),
     });
   });
+
+// Parses a CSV File with columns name,email,shirt_size (header required, any order, any case).
+// Resolves { rows, problems } where problems are file-level issues (missing columns, etc.).
+//
+// Excel's plain "CSV (Comma delimited)" saves in Windows-1252, not UTF-8: names with é or curly
+// apostrophes (’) would come out as "�". If that happens, the file is read again as Windows-1252.
+export async function parseParticipantCsv(file) {
+  let result = await parseWith(file, 'UTF-8');
+  const isFile = typeof Blob !== 'undefined' && file instanceof Blob;
+  if (isFile && !result.error && JSON.stringify(result.data).includes('\uFFFD')) {
+    result = await parseWith(file, 'windows-1252');
+  }
+  if (result.error) return { rows: [], problems: [`Could not read the file: ${result.error.message}`] };
+
+  const { data, meta } = result;
+  const missing = ['name', 'shirt_size'].filter((c) => !meta.fields?.includes(c));
+  if (missing.length > 0) {
+    return {
+      rows: [],
+      problems: [
+        `The file is missing the column(s): ${missing.join(', ')}. The first line must be: ${CSV_COLUMNS.join(',')}`,
+      ],
+    };
+  }
+  const rows = data
+    .map((d) => ({ name: d.name || '', email: d.email || '', shirt_size: d.shirt_size || '' }))
+    .filter((r) => !isBlankRow(r));
+  return { rows, problems: [] };
 }
 
 export function downloadCsvTemplate() {

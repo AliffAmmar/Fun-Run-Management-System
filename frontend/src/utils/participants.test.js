@@ -43,3 +43,19 @@ test('server errors map back to table rows', () => {
     name: 'Lim Wei', email: 'l@x.com', shirt_size: 'XS',
   });
 });
+
+test('re-reads a file saved by Excel in Windows-1252 (é, curly apostrophe) instead of showing �', async () => {
+  // "name,shirt_size\nJosé O’Neil,M\n" encoded as Windows-1252: é = 0xE9, ’ = 0x92
+  const bytes = [
+    ...Buffer.from('name,shirt_size\nJos'), 0xe9, ...Buffer.from(' O'), 0x92, ...Buffer.from('Neil,M\n'),
+  ];
+  const file = new File([new Uint8Array(bytes)], 'excel.csv', { type: 'text/csv' });
+  const { rows, problems } = await parseParticipantCsv(file);
+  expect(problems).toEqual([]);
+  expect(rows[0].name).toBe('José O’Neil');
+});
+
+test('a normal UTF-8 file with accents is read as-is', async () => {
+  const file = new File(['name,shirt_size\nJosé O’Neil,M\n'], 'utf8.csv', { type: 'text/csv' });
+  expect((await parseParticipantCsv(file)).rows[0].name).toBe('José O’Neil');
+});

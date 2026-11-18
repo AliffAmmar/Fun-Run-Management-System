@@ -73,7 +73,8 @@ describe('order confirmation email', () => {
     expect(m.subject).toBe(`Registration confirmed: Charity <Run> (${order.order_no})`);
     expect(m.text).toMatch(order.order_no);
     expect(m.text).toMatch(/0001 {2}Ahmad \(M\)/);
-    expect(m.text).toMatch(/bring their IC/);
+    expect(m.text).toMatch(/with your IC/);
+    expect(m.text).toMatch(/collect separately with the same QR/);
     expect(m.attachments[0]).toMatchObject({ cid: 'order-qr', filename: `${order.order_no}-qr.png` });
     expect(m.attachments[0].content.subarray(1, 4).toString()).toBe('PNG');
     expect(m.html).toMatch('cid:order-qr');
