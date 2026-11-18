@@ -14,7 +14,10 @@ import {
   cleanRow,
   validateRows,
   serverErrorsByRow,
-  shirtSizeCounts,
+  shirtCounts,
+  SHIRT_TYPES,
+  SHIRT_TYPE_LABEL,
+  shirtLabel,
 } from '../utils/participants';
 
 // Registration for one event, creating an Order (see backend /api/orders).
@@ -60,7 +63,8 @@ export default function EventRegistration() {
   const [step, setStep] = useState('details');
 
   const [form, setForm] = useState({ race_category: '', emergency_contact: '', group_name: '', expected_size: '' });
-  const [self, setSelf] = useState({ name: '', email: '', shirt_size: 'M' }); // individual runner
+  // Individual runner. Shirt type has no default: the runner picks the cut they prefer.
+  const [self, setSelf] = useState({ name: '', email: '', shirt_type: '', shirt_size: 'M' });
   const [rows, setRows] = useState(() => Array.from({ length: 5 }, emptyRow)); // group members
   const [serverRowErrors, setServerRowErrors] = useState(null);
   const [showRowErrors, setShowRowErrors] = useState(false);
@@ -105,7 +109,7 @@ export default function EventRegistration() {
   const memberCount = type === 'group' ? filledRows.length : 1;
   const total = price * memberCount;
   const counts = useMemo(
-    () => (type === 'group' ? shirtSizeCounts(filledRows) : shirtSizeCounts([self])),
+    () => (type === 'group' ? shirtCounts(filledRows) : shirtCounts([self])),
     [type, filledRows, self]
   );
   const expected = parseInt(form.expected_size, 10) || 0;
@@ -130,6 +134,7 @@ export default function EventRegistration() {
     if (!form.emergency_contact.trim()) return setError('Emergency contact is required');
     if (type === 'individual') {
       if (!self.name.trim()) return setError('Please enter your full name');
+      if (!SHIRT_TYPES.includes(self.shirt_type)) return setError('Please choose a shirt type (male or female cut)');
       if (!SHIRT_SIZES.includes(self.shirt_size)) return setError('Please choose a shirt size');
       return go('review');
     }
@@ -345,6 +350,26 @@ export default function EventRegistration() {
                           />
                         </div>
                         <div>
+                          <span className={label}>Shirt type *</span>
+                          <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Shirt type">
+                            {SHIRT_TYPES.map((t) => (
+                              <button
+                                type="button"
+                                key={t}
+                                role="radio"
+                                aria-checked={self.shirt_type === t}
+                                onClick={() => setSelf({ ...self, shirt_type: t })}
+                                className={`p-3 rounded-xl border-2 font-bold transition ${
+                                  self.shirt_type === t ? 'border-orange-500 bg-orange-50 text-slate-900' : 'border-slate-200 text-slate-700'
+                                }`}
+                              >
+                                {SHIRT_TYPE_LABEL[t]} shirt
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-sm text-slate-500 mt-1">Choose the cut you prefer. It doesn't have to match your gender.</p>
+                        </div>
+                        <div>
                           <label htmlFor="self_size" className={label}>
                             Shirt size *
                           </label>
@@ -458,8 +483,8 @@ export default function EventRegistration() {
                     </div>
 
                     <div className="bg-slate-50 rounded-xl p-4">
-                      <p className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-2">Shirt sizes so far</p>
-                      <ShirtSizeSummary counts={counts} />
+                      <p className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-2">Shirts so far</p>
+                      <ShirtSizeSummary counts={counts.shirt_sizes} breakdown={counts.shirt_breakdown} />
                     </div>
 
                     <button type="button" onClick={continueFromMembers} className={`w-full ${primaryBtn}`}>
@@ -482,7 +507,7 @@ export default function EventRegistration() {
                         <>
                           <Row k="Name" v={self.name} />
                           {self.email && <Row k="Email" v={self.email} />}
-                          <Row k="Shirt size" v={self.shirt_size} />
+                          <Row k="Shirt" v={shirtLabel(self)} />
                         </>
                       )}
                       <Row k="Emergency contact" v={form.emergency_contact} />
@@ -491,8 +516,8 @@ export default function EventRegistration() {
                     {type === 'group' && (
                       <>
                         <div>
-                          <p className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-2">Shirt sizes</p>
-                          <ShirtSizeSummary counts={counts} />
+                          <p className="text-sm font-bold text-slate-600 uppercase tracking-wide mb-2">Shirts</p>
+                          <ShirtSizeSummary counts={counts.shirt_sizes} breakdown={counts.shirt_breakdown} />
                         </div>
                         <details className="bg-slate-50 rounded-xl p-4">
                           <summary className="font-bold text-slate-800 cursor-pointer">
@@ -503,7 +528,7 @@ export default function EventRegistration() {
                               const c = cleanRow(r);
                               return (
                                 <li key={i}>
-                                  {c.name} · {c.shirt_size}
+                                  {c.name} · {shirtLabel(c)}
                                   {c.email && <span className="text-slate-500"> · {c.email}</span>}
                                 </li>
                               );

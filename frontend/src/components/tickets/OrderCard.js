@@ -5,6 +5,7 @@ import apiClient from '../../utils/apiClient';
 import { checkinUrl } from '../../utils/links';
 import { downloadFile, blobErrorMessage } from '../../utils/download';
 import ShirtSizeSummary from '../registration/ShirtSizeSummary';
+import { shirtLabel } from '../../utils/participants';
 import EditRunners from './EditRunners';
 
 const money = (n) => `RM ${Number(n || 0).toFixed(2)}`;
@@ -112,7 +113,7 @@ export default function OrderCard({ order, paymentMode, onShowQr, onChanged, hig
           {/* Runners + bibs */}
           {isGroup ? (
             <>
-              <ShirtSizeSummary counts={order.shirt_sizes || {}} />
+              <ShirtSizeSummary counts={order.shirt_sizes || {}} breakdown={order.shirt_breakdown} />
               <details className="bg-slate-50 rounded-xl p-3">
                 <summary className="font-bold text-slate-800 cursor-pointer">
                   {order.participant_count} runners{status === 'paid' ? ' & bib numbers' : ''}
@@ -121,7 +122,7 @@ export default function OrderCard({ order, paymentMode, onShowQr, onChanged, hig
                   {order.participants?.map((p) => (
                     <li key={p._id} className="flex justify-between gap-3 py-1.5">
                       <span className="text-slate-800">
-                        {p.name} <span className="text-slate-500">· {p.shirt_size}</span>
+                        {p.name} <span className="text-slate-500">· {shirtLabel(p)}</span>
                         {p.kit_collected && <span className="text-green-700 text-xs font-bold"> · kit ✓</span>}
                         {p.checked_in && <span className="text-green-700 text-xs font-bold"> · in ✓</span>}
                       </span>
@@ -134,7 +135,7 @@ export default function OrderCard({ order, paymentMode, onShowQr, onChanged, hig
           ) : (
             order.participants?.[0] && (
               <p className="text-slate-800">
-                {order.participants[0].name} · {order.participants[0].shirt_size}
+                {order.participants[0].name} · {shirtLabel(order.participants[0])}
                 {order.participants[0].bib_number && (
                   <span className="ml-2 font-mono font-black text-orange-700">Bib {order.participants[0].bib_number}</span>
                 )}

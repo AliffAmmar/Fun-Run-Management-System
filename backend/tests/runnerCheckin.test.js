@@ -55,9 +55,9 @@ beforeEach(async () => {
     emergency_contact: '0123',
     consent_given: true,
     participants: [
-      { name: 'Ahmad', shirt_size: 'M' },
-      { name: 'Siti', shirt_size: 'S' },
-      { name: 'Lim', shirt_size: 'L' },
+      { name: 'Ahmad', shirt_size: 'M', shirt_type: 'male' },
+      { name: 'Siti', shirt_size: 'S', shirt_type: 'male' },
+      { name: 'Lim', shirt_size: 'L', shirt_type: 'male' },
     ],
   });
   await fulfilOrder(res.body.order._id);
@@ -104,7 +104,7 @@ describe('ticking runners individually', () => {
   });
 
   it('rejects runners from another order and an empty selection', async () => {
-    const stranger = await Participant.create({ order_id: runners[0]._id, event_id: event._id, name: 'X', shirt_size: 'M' });
+    const stranger = await Participant.create({ order_id: runners[0]._id, event_id: event._id, name: 'X', shirt_size: 'M', shirt_type: 'male' });
     expect((await collect({ participant_ids: [String(stranger._id)] })).status).toBe(400);
     expect((await collect({ participant_ids: [] })).status).toBe(400);
   });
@@ -173,8 +173,8 @@ describe('everything else counts runners', () => {
 
   it("buyer can't change the shirt size of a runner who collected, but can for one who hasn't", async () => {
     const path = (i) => `/api/orders/${orderNo}/participants/${runners[i]._id}`;
-    expect((await as(buyer).patch(path(0), { shirt_size: 'XL' })).status).toBe(400);
-    expect((await as(buyer).patch(path(2), { shirt_size: 'XL' })).status).toBe(200);
+    expect((await as(buyer).patch(path(0), { shirt_size: 'XL', shirt_type: 'male' })).status).toBe(400);
+    expect((await as(buyer).patch(path(2), { shirt_size: 'XL', shirt_type: 'male' })).status).toBe(200);
   });
 
   it('My Tickets shows each runner\'s status', async () => {

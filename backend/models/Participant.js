@@ -35,6 +35,13 @@ const participantSchema = new mongoose.Schema(
       enum: SHIRT_SIZES,
       required: [true, 'Please provide a shirt size'],
     },
+    // Shirt cut chosen by the runner ('male' | 'female'), NOT their gender. Required for every new
+    // registration (utils/orderValidation.js); not required here only so runners saved before shirt
+    // types existed stay valid.
+    shirt_type: {
+      type: String,
+      enum: ['male', 'female'],
+    },
     emergency_contact: {
       type: String,
       trim: true, // optional; falls back to the order's emergency_contact

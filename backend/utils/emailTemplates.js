@@ -1,6 +1,9 @@
 // Email contents. Each function returns { subject, text, html, attachments } for sendEmail().
 const QRCode = require('qrcode');
 const { appUrl, escapeHtml } = require('./email');
+const { SHIRT_TYPE_LABEL } = require('./shirts');
+
+const shirtText = (p) => [SHIRT_TYPE_LABEL[p.shirt_type], p.shirt_size].filter(Boolean).join(' ');
 
 const fmtDate = (d) =>
   new Date(d).toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -31,7 +34,7 @@ async function orderConfirmationEmail({ order, event, buyer, participants }) {
 
   const subject = `Registration confirmed: ${event.event_name} (${order.order_no})`;
 
-  const runnersText = participants.map((p) => `  ${p.bib_number || '----'}  ${p.name} (${p.shirt_size})`).join('\n');
+  const runnersText = participants.map((p) => `  ${p.bib_number || '----'}  ${p.name} (${shirtText(p)})`).join('\n');
   const text = [
     `Hi ${buyer.name},`,
     '',
@@ -81,7 +84,7 @@ async function orderConfirmationEmail({ order, event, buyer, participants }) {
        ${participants
          .map(
            (p) =>
-             `<tr><td style="padding:3px 8px 3px 0;font-family:monospace;font-weight:bold;color:#c2410c">${escapeHtml(p.bib_number || '')}</td><td style="padding:3px 0">${escapeHtml(p.name)}</td><td style="padding:3px 0;color:#64748b">${escapeHtml(p.shirt_size)}</td></tr>`
+             `<tr><td style="padding:3px 8px 3px 0;font-family:monospace;font-weight:bold;color:#c2410c">${escapeHtml(p.bib_number || '')}</td><td style="padding:3px 0">${escapeHtml(p.name)}</td><td style="padding:3px 0;color:#64748b">${escapeHtml(shirtText(p))}</td></tr>`
          )
          .join('')}
      </table>

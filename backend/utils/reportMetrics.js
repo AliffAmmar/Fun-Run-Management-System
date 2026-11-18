@@ -5,7 +5,8 @@
 //     'individual' and 'group' (was 'team');
 //   - participants / shirt sizes / check-ins count only PAID orders;
 //   - payments: an order can have several attempts (e.g. failed then success), all are counted.
-// Added (new keys, nothing removed): kit_collected_participants, kit_collection_rate.
+// Added (new keys, nothing removed): kit_collected_participants, kit_collection_rate,
+// breakdowns.by_shirt_type_size = { male: {S: 3, …}, female: {…} } (by_shirt_size stays the totals).
 // Kit collection and check-in are counted PER RUNNER (ticked individually on the check-in page).
 const mongoose = require('mongoose');
 const Event = require('../models/Event');
@@ -29,6 +30,7 @@ const emptyMetrics = (event) => ({
     by_registration_type: {},
     by_payment_method: {},
     by_shirt_size: {},
+    by_shirt_type_size: { male: {}, female: {} },
     registrations_per_day: [],
   },
   capacity_utilization: 0,
@@ -57,7 +59,7 @@ const getEventReportMetrics = async (eventId, event) => {
       { $match: { order_id: { $in: paidIds } } },
       {
         $group: {
-          _id: '$shirt_size',
+          _id: { size: '$shirt_size', type: '$shirt_type' },
           count: { $sum: 1 },
           kit: { $sum: { $cond: ['$kit_collected', 1, 0] } },
           checkin: { $sum: { $cond: ['$checked_in', 1, 0] } },
@@ -117,8 +119,10 @@ const getEventReportMetrics = async (eventId, event) => {
     }
   }
 
-  for (const { _id: size, count, kit, checkin } of shirtCounts) {
-    metrics.breakdowns.by_shirt_size[size] = count;
+  for (const { _id, count, kit, checkin } of shirtCounts) {
+    const { size, type } = _id;
+    metrics.breakdowns.by_shirt_size[size] = (metrics.breakdowns.by_shirt_size[size] || 0) + count;
+    if (metrics.breakdowns.by_shirt_type_size[type]) metrics.breakdowns.by_shirt_type_size[type][size] = count;
     metrics.kit_collected_participants += kit;
     metrics.checked_in_participants += checkin;
   }

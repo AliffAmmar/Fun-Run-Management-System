@@ -53,7 +53,7 @@ async function makeOrder(event, buyer, { members = ['Ahmad bin Ali', 'Siti Amina
       race_category: '5km',
       emergency_contact: '0123',
       consent_given: true,
-      participants: members.map((name, i) => ({ name, shirt_size: ['M', 'S', 'L'][i % 3] })),
+      participants: members.map((name, i) => ({ name, shirt_size: ['M', 'S', 'L'][i % 3], shirt_type: 'male' })),
     });
   expect(res.status).toBe(201);
   if (paid) await fulfilOrder(res.body.order._id);

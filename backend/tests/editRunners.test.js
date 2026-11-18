@@ -57,8 +57,8 @@ beforeEach(async () => {
     emergency_contact: '0123',
     consent_given: true,
     participants: [
-      { name: 'Ahmd', shirt_size: 'M' },
-      { name: 'Siti', shirt_size: 'S' },
+      { name: 'Ahmd', shirt_size: 'M', shirt_type: 'male' },
+      { name: 'Siti', shirt_size: 'S', shirt_type: 'male' },
     ],
   });
   order = res.body.order;
@@ -67,7 +67,7 @@ beforeEach(async () => {
 
 it('buyer can fix a name and shirt size before the cutoff (cleaned like at registration)', async () => {
   const p = order.participants[0];
-  const res = await as(buyer).patch(runnerPath(order, p), { name: '  Ahmad   bin Ali ', shirt_size: 'xl' });
+  const res = await as(buyer).patch(runnerPath(order, p), { name: '  Ahmad   bin Ali ', shirt_size: 'xl', shirt_type: 'male' });
   expect(res.status).toBe(200);
   const updated = res.body.order.participants.find((x) => x._id === p._id);
   expect(updated).toMatchObject({ name: 'Ahmad bin Ali', shirt_size: 'XL', bib_number: '0001' });
@@ -78,7 +78,7 @@ it('buyer can fix a name and shirt size before the cutoff (cleaned like at regis
 
 it('validates input', async () => {
   const p = order.participants[0];
-  expect((await as(buyer).patch(runnerPath(order, p), { shirt_size: 'XXXL' })).status).toBe(400);
+  expect((await as(buyer).patch(runnerPath(order, p), { shirt_size: 'XXXL', shirt_type: 'male' })).status).toBe(400);
   expect((await as(buyer).patch(runnerPath(order, p), { name: '   ' })).status).toBe(400);
   expect((await as(buyer).patch(runnerPath(order, p), {})).status).toBe(400);
 });
@@ -103,7 +103,7 @@ it('an explicit kit cutoff date replaces the 7-day default', async () => {
 it('once kits are collected the buyer can no longer change shirt sizes (names still ok)', async () => {
   await as(organizer).post(`/api/checkin/${order.order_no}/collect`);
   const p = order.participants[0];
-  expect((await as(buyer).patch(runnerPath(order, p), { shirt_size: 'L' })).status).toBe(400);
+  expect((await as(buyer).patch(runnerPath(order, p), { shirt_size: 'L', shirt_type: 'male' })).status).toBe(400);
   expect((await as(buyer).patch(runnerPath(order, p), { name: 'Name Only' })).status).toBe(200);
 });
 
@@ -120,7 +120,7 @@ it('refuses strangers, runners from other orders and cancelled orders', async ()
     type: 'individual',
     race_category: '5km',
     emergency_contact: '0123',
-    participants: [{ name: 'Solo', shirt_size: 'M' }],
+    participants: [{ name: 'Solo', shirt_size: 'M', shirt_type: 'male' }],
   });
   // runner of order A addressed through order B
   expect((await as(buyer).patch(runnerPath(solo.body.order, p), { name: 'X' })).status).toBe(404);

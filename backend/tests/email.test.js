@@ -56,8 +56,8 @@ describe('order confirmation email', () => {
         emergency_contact: '0123',
         consent_given: true,
         participants: [
-          { name: 'Ahmad', shirt_size: 'M' },
-          { name: 'Siti', shirt_size: 'S' },
+          { name: 'Ahmad', shirt_size: 'M', shirt_type: 'male' },
+          { name: 'Siti', shirt_size: 'S', shirt_type: 'male' },
         ],
       });
     orderId = res.body.order._id;
@@ -72,7 +72,7 @@ describe('order confirmation email', () => {
     expect(m.to).toBe(buyer.user.email);
     expect(m.subject).toBe(`Registration confirmed: Charity <Run> (${order.order_no})`);
     expect(m.text).toMatch(order.order_no);
-    expect(m.text).toMatch(/0001 {2}Ahmad \(M\)/);
+    expect(m.text).toMatch(/0001 {2}Ahmad \(Male M\)/);
     expect(m.text).toMatch(/with your IC/);
     expect(m.text).toMatch(/collect separately with the same QR/);
     expect(m.attachments[0]).toMatchObject({ cid: 'order-qr', filename: `${order.order_no}-qr.png` });

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import apiClient from '../../utils/apiClient';
-import { SHIRT_SIZES } from '../../utils/participants';
+import { SHIRT_SIZES, SHIRT_TYPES, SHIRT_TYPE_LABEL } from '../../utils/participants';
 
 // Buyer corrects runner names / shirt sizes after registering (until the kit preparation cutoff).
 // Runners can't be added or removed. One row = one save.
 export default function EditRunners({ order, onSaved, onClose }) {
   const [drafts, setDrafts] = useState(() =>
-    Object.fromEntries(order.participants.map((p) => [p._id, { name: p.name, shirt_size: p.shirt_size }]))
+    Object.fromEntries(
+      order.participants.map((p) => [p._id, { name: p.name, shirt_size: p.shirt_size, shirt_type: p.shirt_type || '' }])
+    )
   );
   const [saving, setSaving] = useState(null);
   const [messages, setMessages] = useState({}); // participantId → { ok?, error? }
@@ -18,6 +20,7 @@ export default function EditRunners({ order, onSaved, onClose }) {
     const body = {};
     if (draft.name.trim() !== p.name) body.name = draft.name;
     if (draft.shirt_size !== p.shirt_size) body.shirt_size = draft.shirt_size;
+    if (draft.shirt_type && draft.shirt_type !== p.shirt_type) body.shirt_type = draft.shirt_type;
     if (Object.keys(body).length === 0) return;
 
     setSaving(p._id);
@@ -48,18 +51,34 @@ export default function EditRunners({ order, onSaved, onClose }) {
       <ul className="space-y-2 max-h-96 overflow-y-auto">
         {order.participants.map((p) => {
           const d = drafts[p._id];
-          const dirty = d.name.trim() !== p.name || d.shirt_size !== p.shirt_size;
+          const dirty =
+            d.name.trim() !== p.name || d.shirt_size !== p.shirt_size || (d.shirt_type && d.shirt_type !== p.shirt_type);
           const msg = messages[p._id] || {};
           return (
             <li key={p._id} className="bg-white rounded-lg p-2">
-              <div className="grid grid-cols-[1fr_5.5rem] sm:grid-cols-[3.5rem_1fr_6rem_5rem] gap-2 items-center">
+              <div className="grid grid-cols-[1fr_6rem_4.5rem] sm:grid-cols-[3.5rem_1fr_6.5rem_5rem_5rem] gap-2 items-center">
                 <span className="hidden sm:block font-mono font-bold text-orange-700 text-sm">{p.bib_number || ''}</span>
                 <input
                   aria-label={`Name of runner ${p.bib_number || ''}`}
                   value={d.name}
                   onChange={(e) => change(p._id, 'name', e.target.value)}
-                  className="px-3 py-2 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500"
+                  className="col-span-3 sm:col-span-1 px-3 py-2 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500"
                 />
+                <select
+                  aria-label={`Shirt type of ${p.name}`}
+                  value={d.shirt_type}
+                  disabled={p.kit_collected}
+                  title={p.kit_collected ? 'Kit already collected' : undefined}
+                  onChange={(e) => change(p._id, 'shirt_type', e.target.value)}
+                  className="px-2 py-2 border-2 border-slate-200 rounded-lg bg-white disabled:bg-slate-100"
+                >
+                  {!d.shirt_type && <option value="">Type…</option>}
+                  {SHIRT_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {SHIRT_TYPE_LABEL[t]}
+                    </option>
+                  ))}
+                </select>
                 <select
                   aria-label={`Shirt size of ${p.name}`}
                   value={d.shirt_size}
@@ -75,7 +94,7 @@ export default function EditRunners({ order, onSaved, onClose }) {
                 <button
                   onClick={() => save(p)}
                   disabled={!dirty || saving === p._id}
-                  className="col-span-2 sm:col-span-1 bg-slate-900 text-white font-bold py-2 rounded-lg disabled:opacity-30"
+                  className="bg-slate-900 text-white font-bold py-2 rounded-lg disabled:opacity-30"
                 >
                   {saving === p._id ? '…' : 'Save'}
                 </button>

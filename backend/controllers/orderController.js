@@ -10,22 +10,14 @@ const { nextOrderNo } = require('../utils/numbering');
 const { validateParticipants, findDuplicateEmailWarnings } = require('../utils/orderValidation');
 const { editDeadline } = require('../utils/editWindow');
 const { remainingFor, categoryCapacity, heldByCategory } = require('../utils/capacity');
+const { shirtCounts } = require('../utils/shirts');
 
 const isAdmin = (user) => user.role === 'admin';
 const isEventOrganizer = (event, user) =>
   Boolean(event) && user.role === 'organizer' && String(event.organizer_id) === String(user.userId);
 const isBuyer = (order, user) => String(order.user_id?._id || order.user_id) === String(user.userId);
 
-// Shirt-size totals derived from the participant rows (never entered separately).
-function shirtSizeBreakdown(participants) {
-  const counts = Object.fromEntries(Participant.SHIRT_SIZES.map((s) => [s, 0]));
-  participants.forEach((p) => {
-    counts[p.shirt_size] += 1;
-  });
-  return counts;
-}
-
-// Adds `participants` and `shirt_sizes` to each order (one query for all orders).
+// Adds `participants`, `shirt_sizes` and `shirt_breakdown` to each order (one query for all orders).
 async function withParticipants(orders) {
   const list = Array.isArray(orders) ? orders : [orders];
   const participants = await Participant.find({ order_id: { $in: list.map((o) => o._id) } })
@@ -61,7 +53,7 @@ async function withParticipants(orders) {
       edit_until: ev ? editDeadline(ev) : null,
       is_expired: obj.status === 'pending' && new Date(obj.expires_at) <= new Date(),
       participants: ps,
-      shirt_sizes: shirtSizeBreakdown(ps),
+      ...shirtCounts(ps), // shirt_sizes (totals per size) + shirt_breakdown (per type)
     };
   });
   return Array.isArray(orders) ? result : result[0];
@@ -311,7 +303,7 @@ const getOrdersByEvent = async (req, res) => {
   }
 };
 
-// PATCH /api/orders/:order_no/participants/:participantId   { name?, shirt_size? }
+// PATCH /api/orders/:order_no/participants/:participantId   { name?, shirt_size?, shirt_type? }
 // Correct a runner's name or shirt size after registering (no adding/removing runners).
 //   buyer:              until the kit preparation cutoff (default 7 days before the event), and
 //                       shirt size only while the kits are not yet collected
@@ -337,8 +329,8 @@ const updateParticipant = async (req, res) => {
     const participant = await Participant.findOne({ _id: req.params.participantId, order_id: order._id });
     if (!participant) return res.status(404).json({ message: 'Runner not found in this registration' });
 
-    const { name, shirt_size } = req.body || {};
-    if (name === undefined && shirt_size === undefined) {
+    const { name, shirt_size, shirt_type } = req.body || {};
+    if (name === undefined && shirt_size === undefined && shirt_type === undefined) {
       return res.status(400).json({ message: 'Nothing to change' });
     }
 
@@ -349,20 +341,25 @@ const updateParticipant = async (req, res) => {
           message: `Changes closed on ${deadline.toLocaleDateString('en-MY', { dateStyle: 'long' })}. Please contact the organizer.`,
         });
       }
-      if (shirt_size !== undefined && participant.kit_collected) {
-        return res.status(400).json({ message: 'This runner already collected their kit, so the shirt size can no longer change' });
+      if ((shirt_size !== undefined || shirt_type !== undefined) && participant.kit_collected) {
+        return res.status(400).json({ message: 'This runner already collected their kit, so the shirt can no longer change' });
       }
     }
 
     // Same rules as at registration.
     const { participants, errors } = validateParticipants([
-      { name: name !== undefined ? name : participant.name, shirt_size: shirt_size !== undefined ? shirt_size : participant.shirt_size },
+      {
+        name: name !== undefined ? name : participant.name,
+        shirt_size: shirt_size !== undefined ? shirt_size : participant.shirt_size,
+        shirt_type: shirt_type !== undefined ? shirt_type : participant.shirt_type,
+      },
     ]);
     if (errors.length > 0) {
       return res.status(400).json({ message: errors.map((e) => e.message.replace(/^Row 1: /, '')).join('. '), errors });
     }
     participant.name = participants[0].name;
     participant.shirt_size = participants[0].shirt_size;
+    participant.shirt_type = participants[0].shirt_type;
     await participant.save();
 
     const updated = await Order.findById(order._id).populate(

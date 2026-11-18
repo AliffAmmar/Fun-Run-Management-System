@@ -126,9 +126,11 @@ export default function EventReport() {
     key: name,
     cells: [name, value.capacity ? `${value.participants} / ${value.capacity}` : value.participants, formatCurrency(value.revenue)],
   }));
+  // Shirts per size, split by shirt type (male / female cut) for kit preparation.
+  const shirtTypes = metrics?.breakdowns?.by_shirt_type_size || { male: {}, female: {} };
   const shirtRows = Object.entries(metrics?.breakdowns?.by_shirt_size || {}).map(([size, count]) => ({
     key: size,
-    cells: [size, count],
+    cells: [size, shirtTypes.male?.[size] || 0, shirtTypes.female?.[size] || 0, count],
   }));
   const paymentRows = Object.entries(metrics?.breakdowns?.by_payment_method || {}).map(([method, value]) => ({
     key: method,
@@ -171,7 +173,7 @@ export default function EventReport() {
 
         <div className="grid gap-8 xl:grid-cols-2">
           <BreakdownTable title="Race category" headers={['Category', 'Participants / capacity', 'Revenue']} rows={categoryRows} emptyMessage="No category data yet." />
-          <BreakdownTable title="Shirt sizes" headers={['Size', 'Participants']} rows={shirtRows} emptyMessage="No confirmed shirt-size data yet." />
+          <BreakdownTable title="Shirt sizes" headers={['Size', 'Male', 'Female', 'Total']} rows={shirtRows} emptyMessage="No confirmed shirt-size data yet." />
           <BreakdownTable title="Payment methods" headers={['Method', 'Payments', 'Successful amount', 'Statuses']} rows={paymentRows} emptyMessage="No payment data yet." />
 
           <section className="border-y border-slate-200 bg-white">

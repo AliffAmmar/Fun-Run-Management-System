@@ -56,7 +56,7 @@ async function createGroupOrder(size = 3, who = buyer) {
       race_category: '5km',
       emergency_contact: '0123',
       consent_given: true,
-      participants: Array.from({ length: size }, (_, i) => ({ name: `Runner ${i + 1}`, shirt_size: 'M' })),
+      participants: Array.from({ length: size }, (_, i) => ({ name: `Runner ${i + 1}`, shirt_size: 'M', shirt_type: 'male' })),
     });
   expect(res.status).toBe(201);
   return res.body.order;

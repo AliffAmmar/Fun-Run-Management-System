@@ -47,7 +47,7 @@ async function makeEvent(organizer, overrides = {}) {
   });
 }
 
-const members = (count, mk = (i) => ({ name: `Runner ${i}`, email: `runner${i}@example.com`, shirt_size: 'M' })) =>
+const members = (count, mk = (i) => ({ name: `Runner ${i}`, email: `runner${i}@example.com`, shirt_size: 'M', shirt_type: 'male' })) =>
   Array.from({ length: count }, (_, i) => mk(i + 1));
 
 const post = (token, body) =>
@@ -72,7 +72,7 @@ function individualBody(event, overrides = {}) {
     type: 'individual',
     race_category: '10km',
     emergency_contact: '0198765432',
-    participants: [{ name: 'Ahmad bin Ali', email: 'ahmad@example.com', shirt_size: 'L' }],
+    participants: [{ name: 'Ahmad bin Ali', email: 'ahmad@example.com', shirt_size: 'L', shirt_type: 'male' }],
     ...overrides,
   };
 }
@@ -108,7 +108,7 @@ describe('POST /api/orders (create registration)', () => {
     const res = await post(
       buyer.token,
       groupBody(event, {
-        participants: members(150, (i) => ({ name: `Runner ${i}`, shirt_size: sizes[i % 3] })),
+        participants: members(150, (i) => ({ name: `Runner ${i}`, shirt_size: sizes[i % 3], shirt_type: 'male' })),
       })
     );
     expect(res.status).toBe(201);
@@ -123,15 +123,15 @@ describe('POST /api/orders (create registration)', () => {
       buyer.token,
       groupBody(event, {
         participants: [
-          { name: '  Siti   Aminah ', email: ' Siti@Example.COM ', shirt_size: 's' },
-          { name: 'Lim Wei Jie', shirt_size: 'xl' },
+          { name: '  Siti   Aminah ', email: ' Siti@Example.COM ', shirt_size: 's', shirt_type: 'male' },
+          { name: 'Lim Wei Jie', shirt_size: 'xl', shirt_type: 'male' },
         ],
       })
     );
     expect(res.status).toBe(201);
     const [a, b] = res.body.order.participants;
-    expect(a).toMatchObject({ name: 'Siti Aminah', email: 'siti@example.com', shirt_size: 'S' });
-    expect(b).toMatchObject({ name: 'Lim Wei Jie', shirt_size: 'XL' });
+    expect(a).toMatchObject({ name: 'Siti Aminah', email: 'siti@example.com', shirt_size: 'S', shirt_type: 'male' });
+    expect(b).toMatchObject({ name: 'Lim Wei Jie', shirt_size: 'XL', shirt_type: 'male' });
     expect(b.email).toBeUndefined(); // email is optional for group members
   });
 
@@ -140,11 +140,11 @@ describe('POST /api/orders (create registration)', () => {
       buyer.token,
       groupBody(event, {
         participants: [
-          { name: 'Ok Person', email: 'dup@example.com', shirt_size: 'M' },
-          { name: '', shirt_size: 'M' },
-          { name: 'Bad Size', shirt_size: 'XXXL' },
-          { name: 'Bad Email', email: 'not-an-email', shirt_size: 'M' },
-          { name: 'Dup Email', email: 'DUP@example.com', shirt_size: 'M' },
+          { name: 'Ok Person', email: 'dup@example.com', shirt_size: 'M', shirt_type: 'male' },
+          { name: '', shirt_size: 'M', shirt_type: 'male' },
+          { name: 'Bad Size', shirt_size: 'XXXL', shirt_type: 'male' },
+          { name: 'Bad Email', email: 'not-an-email', shirt_size: 'M', shirt_type: 'male' },
+          { name: 'Dup Email', email: 'DUP@example.com', shirt_size: 'M', shirt_type: 'male' },
         ],
       })
     );
@@ -206,8 +206,8 @@ describe('POST /api/orders (create registration)', () => {
       other.token,
       groupBody(event, {
         participants: [
-          { name: 'Someone', shirt_size: 'M' },
-          { name: 'Ahmad again', email: 'ahmad@example.com', shirt_size: 'M' },
+          { name: 'Someone', shirt_size: 'M', shirt_type: 'male' },
+          { name: 'Ahmad again', email: 'ahmad@example.com', shirt_size: 'M', shirt_type: 'male' },
         ],
       })
     );

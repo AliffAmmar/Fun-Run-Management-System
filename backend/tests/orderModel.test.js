@@ -93,7 +93,7 @@ describe('Order model', () => {
 });
 
 describe('Participant model', () => {
-  const base = () => ({ order_id: id(), event_id: EVENT, name: 'Siti Aminah', shirt_size: 'S' });
+  const base = () => ({ order_id: id(), event_id: EVENT, name: 'Siti Aminah', shirt_size: 'S', shirt_type: 'male' });
 
   it('allows a participant without email', async () => {
     const p = await Participant.create(base());
@@ -102,7 +102,7 @@ describe('Participant model', () => {
 
   it('requires a name and a valid shirt size', async () => {
     await expect(Participant.create({ ...base(), name: '' })).rejects.toThrow(/name/);
-    await expect(Participant.create({ ...base(), shirt_size: 'XXXL' })).rejects.toThrow();
+    await expect(Participant.create({ ...base(), shirt_size: 'XXXL', shirt_type: 'male' })).rejects.toThrow();
   });
 
   it('rejects an invalid email and lowercases a valid one', async () => {

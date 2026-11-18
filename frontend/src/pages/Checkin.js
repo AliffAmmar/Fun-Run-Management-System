@@ -4,6 +4,7 @@ import apiClient from '../utils/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { getWorkingEventId } from '../utils/workingEvent';
 import ShirtSizeSummary from '../components/registration/ShirtSizeSummary';
+import { shirtLabel } from '../utils/participants';
 
 // Opened by scanning an order's QR (/checkin/FR-1012) on a staff phone. Phone-first.
 // Staff tick each runner who collected their kit (or checked in). The group only counts as
@@ -150,7 +151,7 @@ export default function Checkin() {
     );
   }
 
-  const { order, event, buyer, participants, shirt_sizes, bib_range, valid, warnings, log } = data;
+  const { order, event, buyer, participants, shirt_sizes, shirt_breakdown, bib_range, valid, warnings, log } = data;
   const errors = warnings.filter((w) => w.level === 'error');
   const otherWarnings = warnings.filter((w) => w.level !== 'error');
   const total = participants.length;
@@ -217,8 +218,8 @@ export default function Checkin() {
         </div>
 
         <div className="bg-white rounded-2xl shadow p-4">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Shirt sizes</p>
-          <ShirtSizeSummary counts={shirt_sizes} />
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Shirts</p>
+          <ShirtSizeSummary counts={shirt_sizes} breakdown={shirt_breakdown} />
         </div>
 
         {/* Mode switch */}
@@ -284,7 +285,7 @@ export default function Checkin() {
                       <span className="flex-1">
                         <span className="font-bold text-slate-900">{p.name}</span>
                         <span className="block text-xs text-slate-500">
-                          {p.bib_number || '—'} · {p.shirt_size} · {p[m.at] ? fmtTime(p[m.at]) : ''}
+                          {p.bib_number || '—'} · {shirtLabel(p)} · {p[m.at] ? fmtTime(p[m.at]) : ''}
                         </span>
                       </span>
                       <button onClick={() => setUndo({ ids: [p._id], label: p.name })} className="text-sm text-slate-500 underline">
@@ -303,7 +304,7 @@ export default function Checkin() {
                       <span className="flex-1">
                         <span className="font-bold text-slate-900">{p.name}</span>
                         <span className="block text-xs text-slate-500">
-                          {p.bib_number || '—'} · {p.shirt_size}
+                          {p.bib_number || '—'} · {shirtLabel(p)}
                         </span>
                       </span>
                     </label>

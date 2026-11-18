@@ -14,6 +14,7 @@ const Event = require('../models/Event');
 const User = require('../models/User');
 const CheckinLog = require('../models/CheckinLog');
 const { escapeRegex } = require('../utils/regex');
+const { shirtCounts } = require('../utils/shirts');
 
 const ACTIONS = {
   collect: {
@@ -98,14 +99,11 @@ async function buildView(order, event, workingEventId) {
     User.findById(order.user_id).select('name email phone_no'),
     Participant.find({ order_id: order._id })
       .sort({ bib_number: 1, _id: 1 })
-      .select('name shirt_size bib_number kit_collected kit_collected_at checked_in checked_in_at'),
+      .select('name shirt_size shirt_type bib_number kit_collected kit_collected_at checked_in checked_in_at'),
     CheckinLog.find({ order_id: order._id }).sort({ at: -1 }).limit(30).populate('by', 'name'),
   ]);
 
-  const shirt_sizes = Object.fromEntries(Participant.SHIRT_SIZES.map((s) => [s, 0]));
-  participants.forEach((p) => {
-    shirt_sizes[p.shirt_size] += 1;
-  });
+  const { shirt_sizes, shirt_breakdown } = shirtCounts(participants);
   const bibs = participants.map((p) => p.bib_number).filter(Boolean);
 
   const expired = order.status === 'pending' && order.expires_at <= new Date();
@@ -141,6 +139,7 @@ async function buildView(order, event, workingEventId) {
     buyer: buyer ? { name: buyer.name, phone_no: buyer.phone_no, email: buyer.email } : null,
     participants,
     shirt_sizes,
+    shirt_breakdown,
     bib_range: bibs.length ? (bibs.length === 1 ? bibs[0] : `${bibs[0]}–${bibs[bibs.length - 1]}`) : null,
     valid,
     warnings,

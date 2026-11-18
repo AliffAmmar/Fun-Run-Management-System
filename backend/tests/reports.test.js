@@ -54,7 +54,7 @@ async function register(type, category, sizes, group) {
     race_category: category,
     emergency_contact: '0123',
     consent_given: true,
-    participants: sizes.map((s, i) => ({ name: `R${i}`, shirt_size: s })),
+    participants: sizes.map((s, i) => ({ name: `R${i}`, shirt_size: s, shirt_type: 'male' })),
   });
   expect(res.status).toBe(201);
   buyerOf.set(res.body.order.order_no, who);

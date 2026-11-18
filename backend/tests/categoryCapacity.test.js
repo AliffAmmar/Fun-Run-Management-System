@@ -54,7 +54,7 @@ const register = (event, category, size, who = buyer) =>
     race_category: category,
     emergency_contact: '0123',
     consent_given: true,
-    participants: Array.from({ length: size }, (_, i) => ({ name: `R${i}`, shirt_size: 'M' })),
+    participants: Array.from({ length: size }, (_, i) => ({ name: `R${i}`, shirt_size: 'M', shirt_type: 'male' })),
   });
 
 describe('organizer sets a capacity per category', () => {

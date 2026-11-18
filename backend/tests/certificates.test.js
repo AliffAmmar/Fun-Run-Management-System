@@ -75,14 +75,14 @@ beforeEach(async () => {
     type: 'group',
     group_name: 'Kelab Larian',
     participants: [
-      { name: 'Ahmad', email: 'ahmad@example.com', shirt_size: 'M' },
-      { name: 'Siti', email: 'siti@example.com', shirt_size: 'S' },
-      { name: 'Lim (no email)', shirt_size: 'L' },
+      { name: 'Ahmad', email: 'ahmad@example.com', shirt_size: 'M', shirt_type: 'male' },
+      { name: 'Siti', email: 'siti@example.com', shirt_size: 'S', shirt_type: 'male' },
+      { name: 'Lim (no email)', shirt_size: 'L', shirt_type: 'male' },
     ],
   });
   const solo = await makeUser();
-  const s = await order(solo, { type: 'individual', participants: [{ name: 'Solo Runner', email: 'solo@example.com', shirt_size: 'M' }] });
-  await order(buyer, { type: 'group', group_name: 'Unpaid', participants: [{ name: 'U1', shirt_size: 'M' }, { name: 'U2', shirt_size: 'M' }] });
+  const s = await order(solo, { type: 'individual', participants: [{ name: 'Solo Runner', email: 'solo@example.com', shirt_size: 'M', shirt_type: 'male' }] });
+  await order(buyer, { type: 'group', group_name: 'Unpaid', participants: [{ name: 'U1', shirt_size: 'M', shirt_type: 'male' }, { name: 'U2', shirt_size: 'M', shirt_type: 'male' }] });
   await fulfilOrder(g._id);
   await fulfilOrder(s._id);
   groupNo = g.order_no;

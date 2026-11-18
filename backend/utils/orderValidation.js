@@ -6,6 +6,7 @@
 // (CSV header line excluded).
 
 const Participant = require('../models/Participant');
+const { SHIRT_TYPES, normalizeShirtType } = require('./shirts');
 const Order = require('../models/Order');
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
@@ -26,12 +27,23 @@ function validateParticipants(rows) {
     const name = clean(r.name).replace(/\s+/g, ' ');
     const email = clean(r.email).toLowerCase();
     const shirt_size = clean(r.shirt_size).toUpperCase();
+    const shirt_type = normalizeShirtType(r.shirt_type);
     const emergency_contact = clean(r.emergency_contact);
 
     if (!name) {
       errors.push({ row, field: 'name', message: `Row ${row}: name is required` });
     } else if (name.length > MAX_NAME_LENGTH) {
       errors.push({ row, field: 'name', message: `Row ${row}: name is longer than ${MAX_NAME_LENGTH} characters` });
+    }
+
+    if (!clean(r.shirt_type)) {
+      errors.push({ row, field: 'shirt_type', message: `Row ${row}: shirt type (male or female) is required` });
+    } else if (!shirt_type) {
+      errors.push({
+        row,
+        field: 'shirt_type',
+        message: `Row ${row}: shirt type "${r.shirt_type}" must be ${SHIRT_TYPES.join(' or ')}`,
+      });
     }
 
     if (!shirt_size) {
@@ -62,6 +74,7 @@ function validateParticipants(rows) {
       name,
       email: email || undefined,
       shirt_size,
+      shirt_type,
       emergency_contact: emergency_contact || undefined,
     });
   });

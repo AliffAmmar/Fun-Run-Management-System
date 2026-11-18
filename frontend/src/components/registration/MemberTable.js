@@ -1,8 +1,9 @@
 import React from 'react';
-import { SHIRT_SIZES, MAX_GROUP_SIZE, emptyRow } from '../../utils/participants';
+import { SHIRT_SIZES, SHIRT_TYPES, SHIRT_TYPE_LABEL, MAX_GROUP_SIZE, emptyRow, normalizeShirtType } from '../../utils/participants';
 
 // Editable list of group members. On a laptop it's a table; on a phone each member becomes a
-// stacked card. `errors` = { [rowIndex]: { name?, email?, shirt_size? } }.
+// stacked card. `errors` = { [rowIndex]: { name?, email?, shirt_type?, shirt_size? } }.
+// Shirt type is the shirt's cut (male / female), chosen freely, not the runner's gender.
 export default function MemberTable({ rows, setRows, errors = {}, showErrors }) {
   const update = (i, field, value) => {
     setRows((prev) => prev.map((r, j) => (j === i ? { ...r, [field]: value } : r)));
@@ -19,11 +20,12 @@ export default function MemberTable({ rows, setRows, errors = {}, showErrors }) 
   return (
     <div>
       {/* Column headings (laptop only) */}
-      <div className="hidden sm:grid grid-cols-[2.5rem_1fr_1fr_7rem_2.5rem] gap-2 px-1 pb-2 text-xs font-bold text-slate-500 uppercase tracking-wide">
+      <div className="hidden sm:grid grid-cols-[2.5rem_1fr_1fr_7rem_6rem_2.5rem] gap-2 px-1 pb-2 text-xs font-bold text-slate-500 uppercase tracking-wide">
         <span>#</span>
         <span>Full name (as on certificate) *</span>
         <span>Email (optional)</span>
-        <span>Shirt size *</span>
+        <span>Shirt type *</span>
+        <span>Size *</span>
         <span />
       </div>
 
@@ -31,6 +33,8 @@ export default function MemberTable({ rows, setRows, errors = {}, showErrors }) 
         {rows.map((r, i) => {
           const e = showErrors ? errors[i] || {} : {};
           const sizeIsUnknown = r.shirt_size && !SHIRT_SIZES.includes(r.shirt_size.trim().toUpperCase());
+          const typeValue = normalizeShirtType(r.shirt_type) || (r.shirt_type || '').trim();
+          const typeIsUnknown = typeValue && !SHIRT_TYPES.includes(typeValue);
           return (
             <div
               key={i}
@@ -38,7 +42,7 @@ export default function MemberTable({ rows, setRows, errors = {}, showErrors }) 
                 Object.keys(e).length ? 'border-red-300 bg-red-50/40' : 'border-slate-200'
               }`}
             >
-              <div className="grid grid-cols-[2.5rem_1fr_2.5rem] sm:grid-cols-[2.5rem_1fr_1fr_7rem_2.5rem] gap-2 items-start">
+              <div className="grid grid-cols-[2.5rem_1fr_1fr_2.5rem] sm:grid-cols-[2.5rem_1fr_1fr_7rem_6rem_2.5rem] gap-2 items-start">
                 <span className="pt-2 text-sm font-bold text-slate-500">{i + 1}</span>
 
                 <input
@@ -46,7 +50,7 @@ export default function MemberTable({ rows, setRows, errors = {}, showErrors }) 
                   value={r.name}
                   onChange={(ev) => update(i, 'name', ev.target.value)}
                   placeholder="Full name (as on certificate)"
-                  className={`${inputClass(e.name)} col-span-1`}
+                  className={`${inputClass(e.name)} col-span-2 sm:col-span-1`}
                 />
 
                 {/* Remove button sits next to the name on phones */}
@@ -65,14 +69,29 @@ export default function MemberTable({ rows, setRows, errors = {}, showErrors }) 
                   value={r.email}
                   onChange={(ev) => update(i, 'email', ev.target.value)}
                   placeholder="Email (optional)"
-                  className={`${inputClass(e.email)} col-start-2 sm:col-start-auto`}
+                  className={`${inputClass(e.email)} col-start-2 col-span-2 sm:col-start-auto sm:col-span-1`}
                 />
+
+                <select
+                  aria-label={`Row ${i + 1} shirt type`}
+                  value={typeValue}
+                  onChange={(ev) => update(i, 'shirt_type', ev.target.value)}
+                  className={`${inputClass(e.shirt_type)} col-start-2 sm:col-start-auto bg-white`}
+                >
+                  <option value="">Type…</option>
+                  {typeIsUnknown && <option value={typeValue}>{typeValue} (invalid)</option>}
+                  {SHIRT_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {SHIRT_TYPE_LABEL[t]}
+                    </option>
+                  ))}
+                </select>
 
                 <select
                   aria-label={`Row ${i + 1} shirt size`}
                   value={sizeIsUnknown ? r.shirt_size : r.shirt_size.trim().toUpperCase()}
                   onChange={(ev) => update(i, 'shirt_size', ev.target.value)}
-                  className={`${inputClass(e.shirt_size)} col-start-2 sm:col-start-auto bg-white`}
+                  className={`${inputClass(e.shirt_size)} sm:col-start-auto bg-white`}
                 >
                   <option value="">Size…</option>
                   {sizeIsUnknown && <option value={r.shirt_size}>{r.shirt_size} (invalid)</option>}

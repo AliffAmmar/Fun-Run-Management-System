@@ -57,9 +57,10 @@ const buildExportRows = (event, metrics) => {
   for (const [method, values] of Object.entries(metrics.breakdowns.by_payment_method)) {
     rows.push([method, values.payments, values.amount.toFixed(2)]);
   }
-  rows.push([], ['Shirt size', 'Participants']);
+  rows.push([], ['Shirt size', 'Participants', 'Male', 'Female']);
+  const byType = metrics.breakdowns.by_shirt_type_size || { male: {}, female: {} };
   for (const [size, count] of Object.entries(metrics.breakdowns.by_shirt_size)) {
-    rows.push([size, count]);
+    rows.push([size, count, byType.male[size] || 0, byType.female[size] || 0]);
   }
   rows.push([], ['Registration date', 'Registrations']);
   for (const item of metrics.breakdowns.registrations_per_day) {
@@ -169,7 +170,9 @@ const exportEventReport = async (req, res) => {
       `${key}: ${value.registrations} registrations, ${value.participants} participants`);
     writeSection('Payment methods', Object.entries(metrics.breakdowns.by_payment_method), (key, value) =>
       `${key}: ${value.payments} payments, ${value.amount.toFixed(2)} successful amount`);
-    writeSection('Shirt sizes', Object.entries(metrics.breakdowns.by_shirt_size), (key, value) => `${key}: ${value}`);
+    const shirtTypes = metrics.breakdowns.by_shirt_type_size || { male: {}, female: {} };
+    writeSection('Shirt sizes', Object.entries(metrics.breakdowns.by_shirt_size), (key, value) =>
+      `${key}: ${value} (male ${shirtTypes.male[key] || 0}, female ${shirtTypes.female[key] || 0})`);
     writeSection('Registrations per day', metrics.breakdowns.registrations_per_day.map((item) => [item.date, item.count]),
       (key, value) => `${key}: ${value}`);
     document.end();

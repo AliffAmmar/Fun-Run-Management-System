@@ -61,7 +61,10 @@ function emailFor(name, i) {
 function makeMembers(n) {
   return Array.from({ length: n }, (_, i) => {
     const name = memberName();
-    return { name, email: rand() < 0.7 ? emailFor(name, i + 1) : undefined, shirt_size: pick(SIZES) };
+    // Shirt cut is a free choice (not gender): mostly matching the name here, with some exceptions.
+    const femaleName = /binti|a\/p|Tan Mei Ling|Chong Siew Lan|Ng Pei Shan/.test(name);
+    const shirt_type = rand() < 0.85 ? (femaleName ? 'female' : 'male') : femaleName ? 'male' : 'female';
+    return { name, email: rand() < 0.7 ? emailFor(name, i + 1) : undefined, shirt_size: pick(SIZES), shirt_type };
   });
 }
 
@@ -195,7 +198,7 @@ async function main() {
   });
 
   // ---- Orders ---------------------------------------------------------------
-  const self = (u, size) => [{ name: u.name, email: u.email, shirt_size: size }];
+  const self = (u, size, type = 'male') => [{ name: u.name, email: u.email, shirt_size: size, shirt_type: type }];
 
   const orders = [
     await createOrder({ event: charityRun, buyer: buyer(0), type: 'individual', race_category: '5km',

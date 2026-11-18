@@ -38,7 +38,8 @@ export default function CsvUpload({ hasExistingRows, onLoaded }) {
     <div className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl p-5">
       <p className="font-bold text-slate-800 mb-1">Upload a CSV file</p>
       <p className="text-sm text-slate-600 mb-4">
-        Columns: <code className="bg-white px-1 rounded">{CSV_COLUMNS.join(', ')}</code>. Sizes: XS, S, M, L, XL, XXL.
+        Columns: <code className="bg-white px-1 rounded">{CSV_COLUMNS.join(', ')}</code>. Shirt type: <b>male</b> or{' '}
+        <b>female</b> (the shirt's cut, not the runner's gender; M/F also work). Sizes: XS, S, M, L, XL, XXL.
         From Excel use <b>File → Save As → CSV UTF-8</b>; from Google Sheets <b>File → Download → CSV</b>.
       </p>
       <div className="flex flex-wrap gap-3">

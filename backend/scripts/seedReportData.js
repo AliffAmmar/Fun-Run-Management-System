@@ -109,6 +109,7 @@ const seedReportData = async () => {
         name: type === 'individual' ? buyer.name : `${groupName} Runner ${i + 1}`,
         email: type === 'individual' ? buyer.email : undefined,
         shirt_size: shirtSize,
+        shirt_type: i % 2 === 0 ? 'male' : 'female',
         ...(checkedIn && {
           kit_collected: true,
           kit_collected_at: new Date(),
