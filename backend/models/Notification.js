@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['welcome', 'event_created', 'registration_confirmed', 'participant_joined'],
+      enum: ['welcome', 'event_created', 'registration_confirmed', 'participant_joined', 'organizer_request', 'role_changed'],
       required: true,
       description: 'Type of notification',
     },

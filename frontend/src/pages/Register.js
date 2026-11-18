@@ -104,7 +104,7 @@ export default function Register() {
 
           {/* Everyone signs up as a participant; an admin makes organizers (Admin → Users). */}
           <p className="mb-6 text-sm text-gray-600 bg-orange-50 border border-orange-200 rounded-lg p-3">
-            Organising a run? Sign up first, then ask the Run4Fun admin to make your account an organizer.
+            Organising a run? Sign up first, then tap <b>Request organizer access</b> on your Profile page.
           </p>
 
           <button

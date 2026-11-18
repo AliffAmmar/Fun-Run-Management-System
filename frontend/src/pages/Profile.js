@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 import { useAuth } from '../context/AuthContext';
+import OrganizerRequestCard from '../components/profile/OrganizerRequestCard';
 
 const MIN_PASSWORD = 6;
 const ROLE = {
@@ -118,10 +119,9 @@ export default function Profile() {
           {profile.role === 'admin' && <Shortcut to="/admin/users">Users</Shortcut>}
           <Shortcut to="/events">Browse events</Shortcut>
         </div>
-        {profile.role === 'participant' && (
-          <p className="text-sm text-slate-600">Want to organise a run? Ask the Run4Fun admin to make your account an organizer.</p>
-        )}
       </section>
+
+      {profile.role === 'participant' && <OrganizerRequestCard />}
 
       {/* Details */}
       <section className={card}>

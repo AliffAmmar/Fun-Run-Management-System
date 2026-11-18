@@ -178,4 +178,52 @@ function roleChangedEmail({ user, role }) {
   return { subject, text, html, attachments: [] };
 }
 
-module.exports = { orderConfirmationEmail, passwordResetEmail, certificateEmail, certificatesReadyEmail, roleChangedEmail };
+// To each admin when someone asks for organizer access.
+function organizerRequestEmail({ admin, user, organization, note }) {
+  const link = `${appUrl()}/admin/users?tab=requests`;
+  const subject = `Organizer request: ${user.name} (${organization})`;
+  const text = [
+    `Hi ${admin.name},`,
+    '',
+    `${user.name} (${user.email}) asked to become an organizer.`,
+    `Organisation: ${organization}`,
+    note ? `Note: ${note}` : null,
+    '',
+    `Review it: ${link}`,
+  ]
+    .filter((l) => l !== null)
+    .join('\n');
+  const html = layout(
+    'New organizer request',
+    `<p><b>${escapeHtml(user.name)}</b> (${escapeHtml(user.email)}) asked to become an organizer.</p>
+     <p>Organisation: <b>${escapeHtml(organization)}</b>${note ? `<br>Note: ${escapeHtml(note)}` : ''}</p>
+     <p style="margin-top:24px"><a href="${link}" style="background:#ea580c;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Review request</a></p>`
+  );
+  return { subject, text, html, attachments: [] };
+}
+
+// To the user when their organizer request is declined.
+function organizerRequestDeclinedEmail({ user, organization, reason }) {
+  const subject = 'Your Run4Fun organizer request';
+  const lines = [
+    `Your request for organizer access (${organization}) was declined.`,
+    reason ? `Reason: ${reason}` : null,
+    'You can send a new request from your Profile.',
+  ].filter(Boolean);
+  const text = [`Hi ${user.name},`, '', ...lines].join('\n');
+  const html = layout(
+    'Organizer request declined',
+    `<p>Hi ${escapeHtml(user.name)},</p>${lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('')}`
+  );
+  return { subject, text, html, attachments: [] };
+}
+
+module.exports = {
+  orderConfirmationEmail,
+  passwordResetEmail,
+  certificateEmail,
+  certificatesReadyEmail,
+  roleChangedEmail,
+  organizerRequestEmail,
+  organizerRequestDeclinedEmail,
+};

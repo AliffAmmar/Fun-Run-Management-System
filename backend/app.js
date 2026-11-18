@@ -13,6 +13,7 @@ const orderRoutes = require('./routes/orders');
 const checkinRoutes = require('./routes/checkin');
 const certificateRoutes = require('./routes/certificates');
 const adminRoutes = require('./routes/admin');
+const organizerRequestRoutes = require('./routes/organizerRequests');
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/checkin', checkinRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/organizer-requests', organizerRequestRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

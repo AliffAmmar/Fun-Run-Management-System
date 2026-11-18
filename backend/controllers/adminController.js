@@ -3,6 +3,7 @@
 // themselves): the first admin is created with scripts/setRole.js.
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const OrganizerRequest = require('../models/OrganizerRequest');
 const Event = require('../models/Event');
 const { escapeRegex } = require('../utils/regex');
 const { sendEmail } = require('../utils/email');
@@ -73,6 +74,13 @@ const setUserRole = async (req, res) => {
     const previous = user.role;
     user.role = role;
     await user.save();
+    if (role === 'organizer') {
+      // An open "request organizer access" from this user is now settled.
+      await OrganizerRequest.updateMany(
+        { user_id: user._id, status: 'pending' },
+        { status: 'approved', decided_by: req.user.userId, decided_at: new Date() }
+      );
+    }
 
     // Takes effect immediately (the server reads the role on every request). Tell the user.
     try {
