@@ -5,10 +5,15 @@ import { fromLocalInputValue } from '../utils/dates';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 
 import CategoryEditor, { categoriesError, toApiCategories, totalCapacity } from '../components/events/CategoryEditor';
+import PendingPicturesPicker from '../components/events/PendingPicturesPicker';
+import { uploadEventImage } from '../utils/eventImages';
 
 export default function CreateEvent() {
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
+  // Pictures chosen before the event exists; uploaded right after it's created.
+  const [pictures, setPictures] = useState({ cover: null, info: [] });
+  const [progress, setProgress] = useState('');
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     event_name: '',
@@ -80,13 +85,37 @@ export default function CreateEvent() {
         kit_cutoff_date: fromLocalInputValue(formData.kit_cutoff_date),
       });
 
-      await apiClient.post(`/events/${response.data.event._id}/publish`);
-      // Next: add a cover and info pictures (they need the event to exist first).
-      navigate(`/edit-event/${response.data.event._id}?new=1#pictures`);
+      const eventId = response.data.event._id;
+
+      // Upload the chosen pictures. A failed picture doesn't undo the event: the organizer is sent
+      // to the event's Pictures section to add it again.
+      const uploads = [
+        ...(pictures.cover ? [{ file: pictures.cover.file, kind: 'cover', caption: '' }] : []),
+        ...pictures.info.map((p) => ({ file: p.file, kind: 'info', caption: p.caption.trim() })),
+      ];
+      let failed = 0;
+      for (let i = 0; i < uploads.length; i += 1) {
+        setProgress(`Uploading pictures (${i + 1}/${uploads.length})…`);
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          await uploadEventImage(eventId, uploads[i].file, { kind: uploads[i].kind, caption: uploads[i].caption });
+        } catch (uploadErr) {
+          failed += 1;
+        }
+      }
+      setProgress('Publishing…');
+
+      await apiClient.post(`/events/${eventId}/publish`);
+      if (failed > 0) {
+        navigate(`/edit-event/${eventId}?new=1&failed=${failed}#pictures`);
+      } else {
+        navigate('/manage-events');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create event');
     } finally {
       setSubmitting(false);
+      setProgress('');
     }
   };
 
@@ -201,6 +230,12 @@ export default function CreateEvent() {
               />
             </div>
 
+            {/* Pictures (optional; uploaded after the event is created) */}
+            <div className="space-y-4 border-t-2 border-slate-200 pt-8">
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">Pictures</h2>
+              <PendingPicturesPicker value={pictures} onChange={setPictures} disabled={submitting} />
+            </div>
+
             {/* Submit Button */}
             <div className="pt-8 flex gap-4">
               <button
@@ -208,7 +243,7 @@ export default function CreateEvent() {
                 disabled={submitting}
                 className="flex-1 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-bold py-4 px-6 rounded-lg shadow-lg hover:shadow-xl transition duration-300 disabled:opacity-50 transform hover:scale-105 text-lg uppercase tracking-wide"
               >
-                {submitting ? 'Creating Event...' : 'Create & Publish Event'}
+                {submitting ? progress || 'Creating Event...' : 'Create & Publish Event'}
               </button>
               <button
                 type="button"

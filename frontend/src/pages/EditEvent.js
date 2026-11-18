@@ -16,7 +16,9 @@ export default function EditEvent() {
   // Pictures are saved on their own (EventImagesEditor), not with the form below.
   const [images, setImages] = useState({ cover_image: null, info_images: [] });
   const location = useLocation();
-  const justCreated = new URLSearchParams(location.search).get('new') === '1';
+  const query = new URLSearchParams(location.search);
+  const justCreated = query.get('new') === '1';
+  const failedUploads = parseInt(query.get('failed') || '0', 10);
   const [formData, setFormData] = useState({
     event_name: '',
     description: '',
@@ -265,7 +267,12 @@ export default function EditEvent() {
 
         {/* Pictures: cover + info pictures (saved immediately) */}
         <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8 mt-8">
-          {justCreated && (
+          {justCreated && failedUploads > 0 && (
+            <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-900 p-4 rounded-lg font-semibold mb-6">
+              Event created and published, but {failedUploads} picture(s) could not be uploaded. Please add them again below.
+            </div>
+          )}
+          {justCreated && failedUploads === 0 && (
             <div className="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 rounded-lg font-semibold mb-6">
               Event created and published! Add a cover picture and info pictures (kit, size chart, poster) below.
             </div>
