@@ -56,10 +56,10 @@ const seedReportData = async () => {
     date: new Date(Date.now() + 30 * DAY),
     location: 'Kuala Lumpur, Malaysia',
     categories: [
-      { name: '5km', price: 40 },
-      { name: '10km', price: 65 },
+      { name: '5km', price: 40, capacity: 60 },
+      { name: '10km', price: 65, capacity: 40 },
     ],
-    capacity: 100,
+    capacity: 100, // = sum of the category capacities
     organizer_id: organizer._id,
     status: 'published',
   });

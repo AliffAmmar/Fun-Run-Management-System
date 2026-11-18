@@ -111,11 +111,13 @@ orderSchema.methods.holdsSlots = function (now = new Date()) {
 // Number of runners currently taking up slots for an event:
 // participants in paid orders + participants in unexpired pending orders.
 // Remaining capacity = event.capacity − this.
-orderSchema.statics.countHeldParticipants = async function (eventId, now = new Date()) {
+// Pass `category` (e.g. '5km') to count only that race category.
+orderSchema.statics.countHeldParticipants = async function (eventId, now = new Date(), category = null) {
   const [result] = await this.aggregate([
     {
       $match: {
         event_id: new mongoose.Types.ObjectId(String(eventId)),
+        ...(category && { race_category: category }),
         $or: [{ status: 'paid' }, { status: 'pending', expires_at: { $gt: now } }],
       },
     },

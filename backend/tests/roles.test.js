@@ -27,7 +27,7 @@ const eventBody = {
   description: 'x',
   date: new Date(Date.now() + 20 * 864e5).toISOString(),
   location: 'KL',
-  categories: [{ name: '5km', price: 30 }],
+  categories: [{ name: '5km', price: 30, capacity: 50 }],
   capacity: 50,
 };
 

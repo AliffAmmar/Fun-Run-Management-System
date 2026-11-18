@@ -4,7 +4,7 @@ import apiClient from '../utils/apiClient';
 import { fromLocalInputValue } from '../utils/dates';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 
-const CATEGORY_OPTIONS = ['1km', '3km', '5km', '10km'];
+import CategoryEditor, { categoriesError, toApiCategories, totalCapacity } from '../components/events/CategoryEditor';
 
 export default function CreateEvent() {
   const navigate = useNavigate();
@@ -20,8 +20,6 @@ export default function CreateEvent() {
     categories: [],
   });
 
-  const [currentCategory, setCurrentCategory] = useState(CATEGORY_OPTIONS[2]); // '5km'; was '5K', which the server rejects
-  const [currentPrice, setCurrentPrice] = useState('');
 
   // Get today's date in the format required for datetime-local input (using local timezone)
   const getMinDate = () => {
@@ -50,39 +48,6 @@ export default function CreateEvent() {
     }));
   };
 
-  const addCategory = () => {
-    if (!currentPrice || parseFloat(currentPrice) < 0) {
-      setError('Please enter a valid price for the category');
-      return;
-    }
-
-    if (formData.categories.find((cat) => cat.name === currentCategory)) {
-      setError('This category has already been added');
-      return;
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      categories: [
-        ...prev.categories,
-        {
-          name: currentCategory,
-          price: parseFloat(currentPrice),
-        },
-      ],
-    }));
-
-    setCurrentPrice('');
-    setError('');
-  };
-
-  const removeCategory = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      categories: prev.categories.filter((_, i) => i !== index),
-    }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -95,12 +60,10 @@ export default function CreateEvent() {
       setError('Event description is required');
       return;
     }
-    if (formData.categories.length === 0) {
-      setError('Please add at least one category with price');
-      return;
-    }
-    if (!formData.capacity || parseInt(formData.capacity) <= 0) {
-      setError('Capacity must be greater than 0');
+    // Each category has its own price and capacity; the event capacity is their total.
+    const categoryProblem = categoriesError(formData.categories);
+    if (categoryProblem) {
+      setError(categoryProblem);
       return;
     }
 
@@ -112,8 +75,8 @@ export default function CreateEvent() {
         description: formData.description,
         date: fromLocalInputValue(formData.date), // with timezone, so the server can't misread it
         location: formData.location,
-        categories: formData.categories,
-        capacity: parseInt(formData.capacity),
+        categories: toApiCategories(formData.categories),
+        capacity: totalCapacity(formData.categories), // the server recomputes it from the categories
         kit_cutoff_date: fromLocalInputValue(formData.kit_cutoff_date),
       });
 
@@ -201,17 +164,11 @@ export default function CreateEvent() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Capacity *</label>
-                <input
-                  type="number"
-                  name="capacity"
-                  value={formData.capacity}
-                  onChange={handleChange}
-                  required
-                  min="1"
-                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
-                  placeholder="Number of participants"
-                />
+                <p className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Total capacity</p>
+                <p className="px-4 py-3 bg-slate-100 rounded-lg text-lg font-bold text-slate-900">
+                  {totalCapacity(formData.categories)} runners
+                  <span className="block text-sm font-normal text-slate-500">Set per category below</span>
+                </p>
               </div>
 
               <div>
@@ -235,71 +192,12 @@ export default function CreateEvent() {
 
             {/* Categories Section */}
             <div className="space-y-4 border-t-2 border-slate-200 pt-8">
-              <h2 className="text-2xl font-bold text-slate-900 mb-6">Race Categories & Pricing</h2>
-
-              <div className="bg-gradient-to-br from-slate-50 to-orange-50 p-6 rounded-xl border-2 border-orange-200 space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Select Category</label>
-                  <select
-                    value={currentCategory}
-                    onChange={(e) => setCurrentCategory(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
-                  >
-                    {CATEGORY_OPTIONS.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">Price (RM)</label>
-                  <input
-                    type="number"
-                    value={currentPrice}
-                    onChange={(e) => setCurrentPrice(e.target.value)}
-                    step="0.01"
-                    min="0"
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-lg focus:outline-none focus:border-orange-500 transition text-lg"
-                    placeholder="0.00"
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  onClick={addCategory}
-                  className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 transform hover:scale-105 uppercase tracking-wide"
-                >
-                  + Add Category
-                </button>
-              </div>
-
-              {/* Added Categories Display */}
-              {formData.categories.length > 0 && (
-                <div className="bg-white border-2 border-slate-200 rounded-xl p-6">
-                  <p className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wide">Added Categories:</p>
-                  <div className="space-y-3">
-                    {formData.categories.map((cat, idx) => (
-                      <div
-                        key={idx}
-                        className="flex justify-between items-center bg-gradient-to-r from-orange-100 to-red-100 p-4 rounded-lg border-2 border-orange-300"
-                      >
-                        <span className="font-bold text-slate-900 text-lg">
-                          {cat.name} - RM {cat.price.toFixed(2)}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeCategory(idx)}
-                          className="text-red-600 hover:text-red-800 font-bold text-lg transition"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <h2 className="text-2xl font-bold text-slate-900 mb-2">Race Categories, Pricing & Capacity</h2>
+              <p className="text-slate-600 mb-4">Each category has its own number of places. Prices and capacities can be changed later.</p>
+              <CategoryEditor
+                categories={formData.categories}
+                onChange={(categories) => setFormData((prev) => ({ ...prev, categories }))}
+              />
             </div>
 
             {/* Submit Button */}

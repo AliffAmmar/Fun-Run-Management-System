@@ -30,6 +30,12 @@ const eventSchema = new mongoose.Schema(
           type: Number,
           required: true,
         },
+        // Runners allowed in this category. The event's `capacity` is the sum of these.
+        // Optional only for events created before per-category capacity (then the event total applies).
+        capacity: {
+          type: Number,
+          min: 1,
+        },
       },
     ],
     capacity: {

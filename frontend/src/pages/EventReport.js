@@ -124,7 +124,7 @@ export default function EventReport() {
 
   const categoryRows = Object.entries(metrics?.breakdowns?.by_race_category || {}).map(([name, value]) => ({
     key: name,
-    cells: [name, value.participants, formatCurrency(value.revenue)],
+    cells: [name, value.capacity ? `${value.participants} / ${value.capacity}` : value.participants, formatCurrency(value.revenue)],
   }));
   const shirtRows = Object.entries(metrics?.breakdowns?.by_shirt_size || {}).map(([size, count]) => ({
     key: size,
@@ -170,7 +170,7 @@ export default function EventReport() {
         </section>
 
         <div className="grid gap-8 xl:grid-cols-2">
-          <BreakdownTable title="Race category" headers={['Category', 'Participants', 'Revenue']} rows={categoryRows} emptyMessage="No category data yet." />
+          <BreakdownTable title="Race category" headers={['Category', 'Participants / capacity', 'Revenue']} rows={categoryRows} emptyMessage="No category data yet." />
           <BreakdownTable title="Shirt sizes" headers={['Size', 'Participants']} rows={shirtRows} emptyMessage="No confirmed shirt-size data yet." />
           <BreakdownTable title="Payment methods" headers={['Method', 'Payments', 'Successful amount', 'Statuses']} rows={paymentRows} emptyMessage="No payment data yet." />
 

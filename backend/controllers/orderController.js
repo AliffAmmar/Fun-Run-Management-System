@@ -9,6 +9,7 @@ const Certificate = require('../models/Certificate');
 const { nextOrderNo } = require('../utils/numbering');
 const { validateParticipants, findDuplicateEmailWarnings } = require('../utils/orderValidation');
 const { editDeadline } = require('../utils/editWindow');
+const { remainingFor, categoryCapacity, heldByCategory } = require('../utils/capacity');
 
 const isAdmin = (user) => user.role === 'admin';
 const isEventOrganizer = (event, user) =>
@@ -155,15 +156,15 @@ const createOrder = async (req, res) => {
       }
     }
 
-    // ---- Capacity (counted per participant) --------------------------------------
-    const held = await Order.countHeldParticipants(event._id);
-    const remaining = event.capacity - held;
+    // ---- Capacity (per runner; the category's own limit and the event total) -------
+    const { remaining, scope } = await remainingFor(event, race_category);
     if (participants.length > remaining) {
+      const where = scope === 'category' ? `the ${race_category} category` : 'this event';
       return res.status(409).json({
         message:
           remaining <= 0
-            ? 'Sorry, this event is sold out'
-            : `Only ${remaining} slot(s) left, but this registration has ${participants.length} participants`,
+            ? `Sorry, ${where} is sold out`
+            : `Only ${remaining} slot(s) left in ${where}, but this registration has ${participants.length} participants`,
         remaining: Math.max(remaining, 0),
       });
     }
@@ -195,9 +196,12 @@ const createOrder = async (req, res) => {
     }
 
     // Two registrations at the same moment could both pass the capacity check above.
-    // Re-count now that ours is saved; if the event is over capacity, withdraw ours.
+    // Re-count now that ours is saved; if the category or event is over capacity, withdraw ours.
     // (Never overbooks; in a rare tie both may be asked to try again.)
-    if ((await Order.countHeldParticipants(event._id)) > event.capacity) {
+    const catCap = categoryCapacity(event, race_category);
+    const overEvent = (await Order.countHeldParticipants(event._id)) > event.capacity;
+    const overCategory = catCap && (await Order.countHeldParticipants(event._id, new Date(), race_category)) > catCap;
+    if (overEvent || overCategory) {
       await Participant.deleteMany({ order_id: order._id });
       await Order.deleteOne({ _id: order._id });
       return res.status(409).json({ message: 'The last slots were just taken. Please try again.' });
@@ -287,12 +291,20 @@ const getOrdersByEvent = async (req, res) => {
       .sort({ createdAt: -1 })
       .populate('user_id', 'name email phone_no');
     const held = await Order.countHeldParticipants(event._id);
+    const byCat = (await heldByCategory([event._id])).get(String(event._id)) || new Map();
 
     res.json({
       orders: await withParticipants(orders),
       capacity: event.capacity,
       held_slots: held,
       remaining: Math.max(event.capacity - held, 0),
+      // Per category (organizer view, so numbers are fine here).
+      categories: event.categories.map((c) => ({
+        name: c.name,
+        capacity: c.capacity || null,
+        held_slots: byCat.get(c.name) || 0,
+        remaining: c.capacity ? Math.max(c.capacity - (byCat.get(c.name) || 0), 0) : null,
+      })),
     });
   } catch (error) {
     res.status(500).json({ message: 'Failed to get registrations', error: error.message });

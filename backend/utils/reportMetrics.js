@@ -13,13 +13,19 @@ const Order = require('../models/Order');
 const Participant = require('../models/Participant');
 const Payment = require('../models/Payment');
 
+// Every category of the event is listed (with its own capacity), even before anyone registers.
+const categoryStart = (event) =>
+  Object.fromEntries(
+    (event.categories || []).map((c) => [c.name, { participants: 0, revenue: 0, capacity: c.capacity || null }])
+  );
+
 const emptyMetrics = (event) => ({
   registration_count: 0,
   total_participants: 0,
   total_revenue: 0,
   payment_counts: { pending: 0, failed: 0, refunded: 0 },
   breakdowns: {
-    by_race_category: {},
+    by_race_category: categoryStart(event),
     by_registration_type: {},
     by_payment_method: {},
     by_shirt_size: {},
@@ -73,7 +79,7 @@ const getEventReportMetrics = async (eventId, event) => {
     const type = order.type || 'Unspecified';
     const runners = Number(order.participant_count) || 1;
 
-    categoryBreakdowns[category] = categoryBreakdowns[category] || { participants: 0, revenue: 0 };
+    categoryBreakdowns[category] = categoryBreakdowns[category] || { participants: 0, revenue: 0, capacity: null };
     typeBreakdowns[type] = typeBreakdowns[type] || { registrations: 0, participants: 0, revenue: 0 };
     typeBreakdowns[type].registrations += 1;
 

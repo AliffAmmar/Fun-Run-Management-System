@@ -43,11 +43,11 @@ const buildExportRows = (event, metrics) => {
     ['Failed payments', metrics.payment_counts.failed],
     ['Refunded payments', metrics.payment_counts.refunded],
     [],
-    ['Race category', 'Participants', 'Revenue'],
+    ['Race category', 'Participants', 'Capacity', 'Revenue'],
   ];
 
   for (const [category, values] of Object.entries(metrics.breakdowns.by_race_category)) {
-    rows.push([category, values.participants, values.revenue.toFixed(2)]);
+    rows.push([category, values.participants, values.capacity ?? '', values.revenue.toFixed(2)]);
   }
   rows.push([], ['Registration type', 'Registrations', 'Participants', 'Revenue']);
   for (const [type, values] of Object.entries(metrics.breakdowns.by_registration_type)) {
@@ -164,7 +164,7 @@ const exportEventReport = async (req, res) => {
       entries.forEach(([key, value]) => document.text(render(key, value)));
     };
     writeSection('Race categories', Object.entries(metrics.breakdowns.by_race_category), (key, value) =>
-      `${key}: ${value.participants} participants, ${value.revenue.toFixed(2)} revenue`);
+      `${key}: ${value.participants}${value.capacity ? ` of ${value.capacity}` : ''} participants, ${value.revenue.toFixed(2)} revenue`);
     writeSection('Registration types', Object.entries(metrics.breakdowns.by_registration_type), (key, value) =>
       `${key}: ${value.registrations} registrations, ${value.participants} participants`);
     writeSection('Payment methods', Object.entries(metrics.breakdowns.by_payment_method), (key, value) =>

@@ -4,14 +4,16 @@ const { createNotification } = require('./notificationController');
 const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const { escapeRegex } = require('../utils/regex');
+const { heldByCategory, validateCategories, checkCategoryChanges } = require('../utils/capacity');
 
 const createEvent = async (req, res) => {
   try {
     const { event_name, description, date, location, categories, capacity, kit_cutoff_date } = req.body;
 
-    // Validate that at least one category is provided
-    if (!categories || categories.length === 0) {
-      return res.status(400).json({ message: 'Please provide at least one category with price' });
+    // Each category needs a price and its own capacity; the event capacity is their total.
+    const checked = validateCategories(categories);
+    if (checked.error) {
+      return res.status(400).json({ message: checked.error });
     }
     if (kit_cutoff_date && date && new Date(kit_cutoff_date) > new Date(date)) {
       return res.status(400).json({ message: 'Kit preparation cutoff must be before the event date' });
@@ -22,8 +24,8 @@ const createEvent = async (req, res) => {
       description,
       date,
       location,
-      categories,
-      capacity,
+      categories: checked.categories,
+      capacity: checked.total,
       kit_cutoff_date: kit_cutoff_date || null,
       organizer_id: req.user.userId,
       status: 'draft',
@@ -53,9 +55,23 @@ const updateEvent = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
 
-    // If categories are provided, validate at least one exists
-    if (categories && categories.length === 0) {
-      return res.status(400).json({ message: 'Please provide at least one category with price' });
+    // If categories are provided: each needs a price and capacity, the event capacity becomes their
+    // total, and a category with registrations can't be removed or shrunk below them.
+    let newCategories;
+    let newCapacity = capacity;
+    if (categories !== undefined) {
+      const checked = validateCategories(categories);
+      if (checked.error) {
+        return res.status(400).json({ message: checked.error });
+      }
+      const conflict = await checkCategoryChanges(event, checked.categories);
+      if (conflict) {
+        return res.status(400).json({ message: conflict });
+      }
+      newCategories = checked.categories;
+      newCapacity = checked.total;
+    } else if (event.categories.length > 0 && event.categories.every((c) => c.capacity)) {
+      newCapacity = undefined; // capacity follows the categories; ignore a stray total
     }
 
     // Kit preparation cutoff (optional) must not be after the event.
@@ -71,8 +87,8 @@ const updateEvent = async (req, res) => {
         description, 
         date, 
         location, 
-        categories, 
-        capacity, 
+        categories: newCategories, 
+        capacity: newCapacity, 
         status,
         // '' or null clears it (back to the default: 7 days before the event)
         ...(kit_cutoff_date !== undefined && { kit_cutoff_date: kit_cutoff_date || null }),
@@ -139,24 +155,25 @@ const getEventById = async (req, res) => {
 // as agreed). Slots held = paid orders + unpaid orders still within their 30-minute hold.
 async function addAvailability(events) {
   if (events.length === 0) return events;
-  const now = new Date();
-  const held = await Order.aggregate([
-    {
-      $match: {
-        event_id: { $in: events.map((e) => e._id) },
-        $or: [{ status: 'paid' }, { status: 'pending', expires_at: { $gt: now } }],
-      },
-    },
-    { $group: { _id: '$event_id', total: { $sum: '$participant_count' } } },
-  ]);
-  const heldBy = new Map(held.map((h) => [String(h._id), h.total]));
+  const held = await heldByCategory(events.map((e) => e._id));
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
-  return events.map((e) => ({
-    ...e,
-    sold_out: (heldBy.get(String(e._id)) || 0) >= e.capacity,
-    is_past: new Date(e.date) < startOfToday,
-  }));
+  return events.map((e) => {
+    const byCat = held.get(String(e._id)) || new Map();
+    const total = [...byCat.values()].reduce((a, b) => a + b, 0);
+    const eventFull = total >= e.capacity;
+    // Each category: sold out when its own capacity (if set) or the event total is reached.
+    const categories = (e.categories || []).map((c) => {
+      const plain = c.toObject ? c.toObject() : c;
+      return { ...plain, sold_out: eventFull || (c.capacity ? (byCat.get(c.name) || 0) >= c.capacity : false) };
+    });
+    return {
+      ...e,
+      categories,
+      sold_out: eventFull || (categories.length > 0 && categories.every((c) => c.sold_out)),
+      is_past: new Date(e.date) < startOfToday,
+    };
+  });
 }
 
 const getAllEvents = async (req, res) => {

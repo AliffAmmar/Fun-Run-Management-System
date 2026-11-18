@@ -84,7 +84,9 @@ export default function EventRegistration() {
       .then((res) => {
         const ev = res.data.event;
         setEvent(ev);
-        setForm((f) => ({ ...f, race_category: ev.categories?.[0]?.name || '' }));
+        // Start on the first category that still has places.
+        const firstOpen = ev.categories?.find((c) => !c.sold_out) || ev.categories?.[0];
+        setForm((f) => ({ ...f, race_category: firstOpen?.name || '' }));
       })
       .catch(() => setError('Failed to load event'))
       .finally(() => setLoading(false));
@@ -305,9 +307,10 @@ export default function EventRegistration() {
                       </label>
                       <select id="race_category" name="race_category" value={form.race_category} onChange={setField} className={input}>
                         {event?.categories?.map((c) => (
-                          <option key={c.name} value={c.name}>
+                          <option key={c.name} value={c.name} disabled={c.sold_out}>
                             {c.name} · {money(c.price)}
                             {type === 'group' ? ' per person' : ''}
+                            {c.sold_out ? ' (sold out)' : ''}
                           </option>
                         ))}
                       </select>

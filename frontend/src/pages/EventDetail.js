@@ -145,8 +145,15 @@ export default function EventDetail() {
                   {event.categories.map((cat, idx) => (
                     <div
                       key={idx}
-                      className="bg-gradient-to-br from-slate-50 to-orange-50 p-6 rounded-xl border-2 border-orange-200 hover:border-orange-500 hover:shadow-lg transition"
+                      className={`relative bg-gradient-to-br from-slate-50 to-orange-50 p-6 rounded-xl border-2 transition ${
+                        cat.sold_out ? 'border-slate-200 opacity-60' : 'border-orange-200 hover:border-orange-500 hover:shadow-lg'
+                      }`}
                     >
+                      {cat.sold_out && (
+                        <span className="absolute top-3 right-3 bg-red-600 text-white text-xs font-black uppercase px-2 py-1 rounded-full">
+                          Sold out
+                        </span>
+                      )}
                       <p className="font-bold text-slate-900 text-lg mb-2">{cat.name}</p>
                       <p className="text-3xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
                         RM {cat.price.toFixed(2)}

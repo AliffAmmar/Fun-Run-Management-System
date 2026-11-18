@@ -97,8 +97,8 @@ it('report keeps its output keys and counts orders, runners, money and check-ins
     capacity: 100,
   });
   expect(m.breakdowns.by_race_category).toEqual({
-    '5km': { participants: 4, revenue: 160 },
-    '10km': { participants: 1, revenue: 65 },
+    '5km': { participants: 4, revenue: 160, capacity: null },
+    '10km': { participants: 1, revenue: 65, capacity: null },
   });
   expect(m.breakdowns.by_registration_type).toEqual({
     individual: { registrations: 3, participants: 2, revenue: 105 },

@@ -142,11 +142,11 @@ async function main() {
     date: new Date('2027-02-14T07:00:00+08:00'),
     location: 'Taman Tasik Titiwangsa, Kuala Lumpur',
     categories: [
-      { name: '3km', price: 25 },
-      { name: '5km', price: 35 },
-      { name: '10km', price: 45 },
+      { name: '3km', price: 25, capacity: 100 },
+      { name: '5km', price: 35, capacity: 120 },
+      { name: '10km', price: 45, capacity: 80 },
     ],
-    capacity: 300,
+    capacity: 300, // = sum of the category capacities
     organizer_id: organizer._id,
     status: 'published',
   });
@@ -157,8 +157,8 @@ async function main() {
     date: new Date('2027-03-21T07:30:00+08:00'),
     location: 'Taman Bullion Mewah, Kuala Lumpur',
     categories: [
-      { name: '1km', price: 15 },
-      { name: '5km', price: 30 },
+      { name: '1km', price: 15, capacity: 30 },
+      { name: '5km', price: 30, capacity: 50 },
     ],
     capacity: 80,
     organizer_id: organizer._id,
@@ -172,8 +172,8 @@ async function main() {
     date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     location: 'Taman Bukit Kiara, Kuala Lumpur',
     categories: [
-      { name: '5km', price: 30 },
-      { name: '10km', price: 40 },
+      { name: '5km', price: 30, capacity: 100 },
+      { name: '10km', price: 40, capacity: 50 },
     ],
     capacity: 150,
     organizer_id: organizer._id,

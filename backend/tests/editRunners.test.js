@@ -137,7 +137,7 @@ describe('kit cutoff on events (organizer form)', () => {
     description: 'x',
     date: new Date(Date.now() + 20 * DAY).toISOString(),
     location: 'KL',
-    categories: [{ name: '5km', price: 30 }],
+    categories: [{ name: '5km', price: 30, capacity: 50 }],
     capacity: 50,
     ...extra,
   });
