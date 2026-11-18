@@ -70,15 +70,15 @@ export default function EventsList() {
   return (
     <div className="bg-gradient-to-b from-slate-50 via-white to-orange-50 min-h-screen">
       {/* Hero Banner */}
-      <div className="relative h-96 bg-gradient-to-r from-slate-900 via-red-700 to-orange-600 overflow-hidden mb-12">
+      <div className="relative h-56 sm:h-96 bg-gradient-to-r from-slate-900 via-red-700 to-orange-600 overflow-hidden mb-8 sm:mb-12">
         <div className="absolute inset-0 opacity-20">
           <svg className="w-full h-full" viewBox="0 0 1000 400" preserveAspectRatio="none">
             <path d="M0,200 Q250,100 500,200 T1000,200 L1000,400 L0,400 Z" fill="rgba(255,255,255,0.1)" />
           </svg>
         </div>
         <div className="relative h-full flex flex-col justify-center items-center text-white text-center px-4">
-          <h1 className="text-6xl font-black mb-4 tracking-tight">RUN4FUN</h1>
-          <p className="text-2xl font-light tracking-wide">Join amazing running events near you</p>
+          <h1 className="text-4xl sm:text-6xl font-black mb-2 sm:mb-4 tracking-tight">RUN4FUN</h1>
+          <p className="text-lg sm:text-2xl font-light tracking-wide">Join amazing running events near you</p>
           <p className="text-orange-200 mt-4 text-lg">Be part of the running revolution</p>
         </div>
       </div>

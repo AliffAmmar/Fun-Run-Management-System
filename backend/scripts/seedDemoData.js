@@ -17,6 +17,7 @@ const Event = require('../models/Event');
 const Order = require('../models/Order');
 const Participant = require('../models/Participant');
 const Counter = require('../models/Counter');
+const Payment = require('../models/Payment');
 const Certificate = require('../models/Certificate');
 const CertificateBackground = require('../models/CertificateBackground');
 const CheckinLog = require('../models/CheckinLog');
@@ -107,7 +108,18 @@ async function createOrder({ event, buyer, type, group_name, race_category, memb
       ...(checkedInBy && { checked_in: true, checked_in_at: now, checked_in_by: checkedInBy._id }),
     }))
   );
-  if (status === 'paid') await assignBibNumbers(order);
+  if (status === 'paid') {
+    await assignBibNumbers(order);
+    // Record the (demo) payment too, so reports show revenue.
+    await Payment.create({
+      order_id: order._id,
+      amount: order.total_amount,
+      payment_method: 'credit_card',
+      payment_status: 'success',
+      provider: 'mock',
+      transaction_id: `DEMO_${order.order_no}_${Date.now()}`,
+    });
+  }
   return order;
 }
 
@@ -127,6 +139,8 @@ async function main() {
   // ---- Remove previous demo data -------------------------------------------
   const oldEvents = await Event.find({ event_name: { $regex: '^\\[Demo\\] ' } });
   const oldIds = oldEvents.map((e) => e._id);
+  const oldOrderIds = await Order.find({ event_id: { $in: oldIds } }).distinct('_id');
+  await Payment.deleteMany({ order_id: { $in: oldOrderIds } });
   await Certificate.deleteMany({ event_id: { $in: oldIds } });
   await CertificateBackground.deleteMany({ event_id: { $in: oldIds } });
   await CheckinLog.deleteMany({ event_id: { $in: oldIds } });
