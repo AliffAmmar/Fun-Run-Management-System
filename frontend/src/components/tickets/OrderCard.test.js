@@ -92,3 +92,13 @@ test('shows "Fix a name or shirt size" only before the edit deadline', () => {
   expect(render({ ...base, status: 'paid', edit_until: '2027-01-05T00:00:00Z' })).toMatch('Fix a name or shirt size');
   expect(render({ ...base, status: 'paid', edit_until: '2026-12-31T00:00:00Z' })).not.toMatch('Fix a name or shirt size');
 });
+
+test('shows partial kit collection and per-runner ticks', () => {
+  const text = render({
+    ...base,
+    status: 'paid',
+    participants: [{ ...base.participants[0], kit_collected: true }, base.participants[1]],
+  });
+  expect(text).toMatch('Kit collected 1 of 2');
+  expect(text).toMatch('Ahmad · M · kit ✓');
+});

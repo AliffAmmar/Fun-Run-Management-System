@@ -47,6 +47,10 @@ export default function OrderCard({ order, paymentMode, onShowQr, onChanged, hig
   };
   const pay = () => act(() => apiClient.post(`/payments/orders/${order.order_no}/mock`, {}));
   const withCerts = (order.participants || []).filter((p) => p.certificate_no);
+  // Kit collection / check-in are ticked per runner by staff.
+  const runnerCount = order.participants?.length || order.participant_count;
+  const kitCount = (order.participants || []).filter((p) => p.kit_collected).length;
+  const inCount = (order.participants || []).filter((p) => p.checked_in).length;
   // Names / shirt sizes can be corrected until the kit preparation cutoff (server re-checks).
   const canEdit = ['paid', 'pending'].includes(status) && order.edit_until && now <= new Date(order.edit_until);
   const download = async (path, filename) => {
@@ -92,8 +96,16 @@ export default function OrderCard({ order, paymentMode, onShowQr, onChanged, hig
 
           {status === 'paid' && (
             <div className="flex flex-wrap gap-2 text-sm">
-              <Stamp done={order.kit_collected} doneText={`Kit collected ${order.kit_collected_at ? fmtStamp(order.kit_collected_at) : ''}`} todoText="Kit not collected yet" />
-              <Stamp done={order.checked_in} doneText={`Checked in ${order.checked_in_at ? fmtStamp(order.checked_in_at) : ''}`} todoText="Not checked in" />
+              <Stamp
+                done={order.kit_collected}
+                doneText={`Kit collected ${order.kit_collected_at ? fmtStamp(order.kit_collected_at) : ''}`}
+                todoText={kitCount ? `Kit collected ${kitCount} of ${runnerCount}` : 'Kit not collected yet'}
+              />
+              <Stamp
+                done={order.checked_in}
+                doneText={`Checked in ${order.checked_in_at ? fmtStamp(order.checked_in_at) : ''}`}
+                todoText={inCount ? `Checked in ${inCount} of ${runnerCount}` : 'Not checked in'}
+              />
             </div>
           )}
 
@@ -110,6 +122,8 @@ export default function OrderCard({ order, paymentMode, onShowQr, onChanged, hig
                     <li key={p._id} className="flex justify-between gap-3 py-1.5">
                       <span className="text-slate-800">
                         {p.name} <span className="text-slate-500">· {p.shirt_size}</span>
+                        {p.kit_collected && <span className="text-green-700 text-xs font-bold"> · kit ✓</span>}
+                        {p.checked_in && <span className="text-green-700 text-xs font-bold"> · in ✓</span>}
                       </span>
                       {p.bib_number && <span className="font-mono font-black text-orange-700">{p.bib_number}</span>}
                     </li>

@@ -337,8 +337,8 @@ const updateParticipant = async (req, res) => {
           message: `Changes closed on ${deadline.toLocaleDateString('en-MY', { dateStyle: 'long' })}. Please contact the organizer.`,
         });
       }
-      if (shirt_size !== undefined && order.kit_collected) {
-        return res.status(400).json({ message: 'Kits were already collected, so shirt sizes can no longer change' });
+      if (shirt_size !== undefined && participant.kit_collected) {
+        return res.status(400).json({ message: 'This runner already collected their kit, so the shirt size can no longer change' });
       }
     }
 

@@ -43,6 +43,15 @@ const participantSchema = new mongoose.Schema(
     // formatted string, e.g. "0042".
     bib_number: String,
     finish_time: Date, // reserved; completion tracking is not built
+
+    // Per-runner kit collection and event-day check-in (ticked on the check-in page).
+    // The order's own kit_collected / checked_in become true only when ALL its runners are ticked.
+    kit_collected: { type: Boolean, default: false },
+    kit_collected_at: Date,
+    kit_collected_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    checked_in: { type: Boolean, default: false },
+    checked_in_at: Date,
+    checked_in_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }
 );

@@ -30,14 +30,14 @@ function newCertificateNo() {
 
 // Who gets a certificate, per the event's setting (undecided with the collaborator):
 //   all_paid      every runner in a paid order (default)
-//   kit_collected only orders whose kit was collected
-//   checked_in    only orders checked in on event day
+//   kit_collected only runners ticked as having collected their kit
+//   checked_in    only runners ticked as checked in on event day
 async function getEligibleParticipants(event) {
-  const filter = { event_id: event._id, status: 'paid' };
+  const orderIds = await Order.find({ event_id: event._id, status: 'paid' }).distinct('_id');
+  const filter = { order_id: { $in: orderIds } };
   if (event.certificate_eligibility === 'kit_collected') filter.kit_collected = true;
   if (event.certificate_eligibility === 'checked_in') filter.checked_in = true;
-  const orderIds = await Order.find(filter).distinct('_id');
-  return Participant.find({ order_id: { $in: orderIds } }).sort({ bib_number: 1, _id: 1 });
+  return Participant.find(filter).sort({ bib_number: 1, _id: 1 });
 }
 
 // Creates missing certificate records. Returns { eligible, created }.

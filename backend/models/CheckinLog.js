@@ -9,11 +9,15 @@ const checkinLogSchema = new mongoose.Schema(
     event_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Event', required: true },
     action: {
       type: String,
-      enum: ['kit_collected', 'checked_in', 'undo_kit_collected', 'undo_checked_in'],
+      enum: ['kit_collected', 'checked_in', 'undo_kit_collected', 'undo_checked_in', 'kit_remark', 'checkin_remark'],
       required: true,
     },
     by: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    // Which runners this action covered (empty for a remark-only entry).
+    participant_ids: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Participant' }],
+    count: { type: Number, default: 0 },
     reason: { type: String, trim: true }, // required for undo actions (checked in the controller)
+    remark: { type: String, trim: true }, // optional staff note, e.g. why not everyone collected
   },
   { timestamps: { createdAt: 'at', updatedAt: false } }
 );

@@ -129,11 +129,11 @@ export default function EventDay() {
                       <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{r.status}</span>
                     ) : (
                       <>
-                        <span className={`px-2 py-0.5 rounded-full ${r.kit_collected ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
-                          {r.kit_collected ? '✓ Kit' : 'Kit'}
+                        <span className={`px-2 py-0.5 rounded-full ${r.kit_collected ? 'bg-green-100 text-green-800' : r.kit_collected_count ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
+                          {r.kit_collected ? '✓ Kit' : `Kit ${r.kit_collected_count || 0}/${r.participant_count}`}
                         </span>
-                        <span className={`px-2 py-0.5 rounded-full ${r.checked_in ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
-                          {r.checked_in ? '✓ In' : 'Check-in'}
+                        <span className={`px-2 py-0.5 rounded-full ${r.checked_in ? 'bg-green-100 text-green-800' : r.checked_in_count ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}`}>
+                          {r.checked_in ? '✓ In' : `In ${r.checked_in_count || 0}/${r.participant_count}`}
                         </span>
                       </>
                     )}

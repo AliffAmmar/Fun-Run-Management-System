@@ -79,15 +79,19 @@ const orderSchema = new mongoose.Schema(
     },
     paid_at: Date,
 
-    // Kit collection (order-level: the leader collects all kits at once)
+    // Kit collection: true only when EVERY runner in the order has collected (ticked per runner on
+    // Participant). kit_collected_at = when the last runner was ticked.
     kit_collected: { type: Boolean, default: false },
     kit_collected_at: Date,
     kit_collected_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
-    // Event-day check-in (order-level)
+    // Event-day check-in: true only when EVERY runner is checked in (per runner on Participant).
     checked_in: { type: Boolean, default: false },
     checked_in_at: Date,
     checked_in_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    // Latest staff remark, e.g. "3 runners will collect tomorrow" (history is in CheckinLog).
+    kit_remark: { type: String, trim: true, maxlength: 500 },
+    checkin_remark: { type: String, trim: true, maxlength: 500 },
 
     // Set once the buyer has been emailed "certificates are ready in My Tickets" (for members
     // without an email). Guarantees one notice per order.

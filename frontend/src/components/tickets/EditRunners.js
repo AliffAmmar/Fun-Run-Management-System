@@ -39,7 +39,7 @@ export default function EditRunners({ order, onSaved, onClose }) {
         <p className="text-sm text-slate-700">
           Fix spelling (names appear on certificates) or shirt sizes until{' '}
           <b>{new Date(order.edit_until).toLocaleString('en-MY', { dateStyle: 'medium', timeStyle: 'short' })}</b>.
-          {order.kit_collected && ' Kits are already collected, so sizes are locked.'}
+          {order.participants.some((p) => p.kit_collected) && ' Runners who already collected their kit can no longer change size.'}
         </p>
         <button onClick={onClose} className="text-sm font-bold text-slate-500 hover:text-slate-800 shrink-0">
           Done
@@ -63,7 +63,8 @@ export default function EditRunners({ order, onSaved, onClose }) {
                 <select
                   aria-label={`Shirt size of ${p.name}`}
                   value={d.shirt_size}
-                  disabled={order.kit_collected}
+                  disabled={p.kit_collected}
+                  title={p.kit_collected ? 'Kit already collected' : undefined}
                   onChange={(e) => change(p._id, 'shirt_size', e.target.value)}
                   className="px-2 py-2 border-2 border-slate-200 rounded-lg bg-white disabled:bg-slate-100"
                 >

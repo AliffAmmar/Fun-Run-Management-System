@@ -65,7 +65,8 @@ function makeMembers(n) {
 }
 
 async function createOrder({ event, buyer, type, group_name, race_category, members, status,
-  expired = false, kitCollectedBy = null, checkedInBy = null }) {
+  expired = false, kitCollectedBy = null, checkedInBy = null, kitCount = null, kitRemark = null }) {
+  // kitCount: how many runners collected (default all when kitCollectedBy is set).
   const price = event.categories.find((c) => c.name === race_category).price;
   const now = new Date();
 
@@ -83,7 +84,7 @@ async function createOrder({ event, buyer, type, group_name, race_category, memb
     status,
     expires_at: expired ? new Date(now - 60 * 60 * 1000) : undefined, // default: now + 30 min
     paid_at: status === 'paid' ? now : undefined,
-    ...(kitCollectedBy && {
+    ...(kitCollectedBy && (kitCount === null || kitCount >= members.length) && {
       kit_collected: true,
       kit_collected_at: now,
       kit_collected_by: kitCollectedBy._id,
@@ -93,10 +94,18 @@ async function createOrder({ event, buyer, type, group_name, race_category, memb
       checked_in_at: now,
       checked_in_by: checkedInBy._id,
     }),
+    ...(kitRemark && { kit_remark: kitRemark }),
   });
 
+  const collected = kitCollectedBy ? (kitCount === null ? members.length : kitCount) : 0;
   await Participant.insertMany(
-    members.map((m) => ({ ...m, order_id: order._id, event_id: event._id }))
+    members.map((m, i) => ({
+      ...m,
+      order_id: order._id,
+      event_id: event._id,
+      ...(i < collected && { kit_collected: true, kit_collected_at: now, kit_collected_by: kitCollectedBy._id }),
+      ...(checkedInBy && { checked_in: true, checked_in_at: now, checked_in_by: checkedInBy._id }),
+    }))
   );
   if (status === 'paid') await assignBibNumbers(order);
   return order;
@@ -190,7 +199,8 @@ async function main() {
     await createOrder({ event: charityRun, buyer: buyer(0), type: 'group', group_name: 'Pejabat Runners',
       race_category: '3km', members: makeMembers(4), status: 'cancelled' }),
     await createOrder({ event: familyRun, buyer: buyer(1), type: 'group', group_name: 'Keluarga Ahmad',
-      race_category: '1km', members: makeMembers(5), status: 'paid' }),
+      race_category: '1km', members: makeMembers(5), status: 'paid', kitCollectedBy: organizer, kitCount: 3,
+      kitRemark: '2 children will collect with their father on race day' }),
     await createOrder({ event: familyRun, buyer: buyer(2), type: 'individual', race_category: '5km',
       members: self(buyer(2), 'S'), status: 'paid' }),
     await createOrder({ event: pastRun, buyer: buyer(0), type: 'individual', race_category: '10km',
@@ -210,7 +220,8 @@ async function main() {
       const ps = await Participant.find({ order_id: o._id }).sort({ bib_number: 1 });
       const bibs = ps[0].bib_number ? `bibs ${ps[0].bib_number}–${ps[ps.length - 1].bib_number}` : 'no bibs';
       const status = o.status === 'pending' && !o.holdsSlots() ? 'expired' : o.status;
-      const kit = o.kit_collected ? ', kit collected' : '';
+      const kitN = ps.filter((p) => p.kit_collected).length;
+      const kit = o.kit_collected ? ', kit collected' : kitN ? `, kit ${kitN}/${ps.length}` : '';
       console.log(
         `  ${o.order_no}  ${(o.group_name || ps[0].name).padEnd(24)} ${o.race_category.padEnd(5)}` +
         ` ${String(o.participant_count).padStart(3)} runner(s)  RM${o.total_amount}  ${status}${kit}  ${bibs}`

@@ -37,6 +37,8 @@ const buildExportRows = (event, metrics) => {
     ['Capacity utilization', metrics.capacity_utilization],
     ['Checked-in participants', metrics.checked_in_participants],
     ['Attendance rate', metrics.attendance_rate],
+    ['Kits collected (runners)', metrics.kit_collected_participants],
+    ['Kit collection rate', metrics.kit_collection_rate],
     ['Pending payments', metrics.payment_counts.pending],
     ['Failed payments', metrics.payment_counts.failed],
     ['Refunded payments', metrics.payment_counts.refunded],
@@ -152,6 +154,7 @@ const exportEventReport = async (req, res) => {
     document.text(`Capacity utilization: ${(metrics.capacity_utilization * 100).toFixed(1)}%`);
     document.text(`Checked-in participants: ${metrics.checked_in_participants}`);
     document.text(`Attendance rate: ${(metrics.attendance_rate * 100).toFixed(1)}%`);
+    document.text(`Kits collected: ${metrics.kit_collected_participants} (${(metrics.kit_collection_rate * 100).toFixed(1)}%)`);
     document.text(`Payments pending / failed / refunded: ${metrics.payment_counts.pending} / ${metrics.payment_counts.failed} / ${metrics.payment_counts.refunded}`);
 
     const writeSection = (title, entries, render) => {

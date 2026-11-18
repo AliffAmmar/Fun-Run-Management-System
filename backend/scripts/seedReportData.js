@@ -109,6 +109,14 @@ const seedReportData = async () => {
         name: type === 'individual' ? buyer.name : `${groupName} Runner ${i + 1}`,
         email: type === 'individual' ? buyer.email : undefined,
         shirt_size: shirtSize,
+        ...(checkedIn && {
+          kit_collected: true,
+          kit_collected_at: new Date(),
+          kit_collected_by: organizer._id,
+          checked_in: true,
+          checked_in_at: new Date(),
+          checked_in_by: organizer._id,
+        }),
       }))
     );
     if (status === 'paid') await assignBibNumbers(order);

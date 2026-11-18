@@ -161,11 +161,12 @@ export default function EventReport() {
         {error && <div role="alert" className="mb-5 rounded-lg border-l-4 border-red-500 bg-red-50 px-5 py-4 text-red-800">{error}</div>}
         {success && <div role="status" className="mb-5 rounded-lg border-l-4 border-green-500 bg-green-50 px-5 py-4 text-green-800">{success}</div>}
 
-        <section aria-label="Event statistics" className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section aria-label="Event statistics" className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <Stat label="Participants" value={metrics.total_participants} detail={`${metrics.registration_count} registrations`} />
           <Stat label="Revenue" value={formatCurrency(metrics.total_revenue)} accent="border-red-500" />
           <Stat label="Capacity used" value={formatPercent(metrics.capacity_utilization)} detail={`${event?.capacity || 0} capacity`} accent="border-amber-500" />
           <Stat label="Attendance rate" value={formatPercent(metrics.attendance_rate)} detail={`${metrics.checked_in_participants} checked in`} accent="border-green-600" />
+          <Stat label="Kits collected" value={formatPercent(metrics.kit_collection_rate || 0)} detail={`${metrics.kit_collected_participants || 0} runners`} accent="border-blue-500" />
         </section>
 
         <div className="grid gap-8 xl:grid-cols-2">
