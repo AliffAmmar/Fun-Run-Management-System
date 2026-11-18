@@ -35,13 +35,13 @@ export const AuthProvider = ({ children }) => {
     return response.data;
   };
 
-  const register = async (name, email, password, phone_no, role = 'participant') => {
+  // Everyone signs up as a participant (the server ignores any role); admins make organizers.
+  const register = async (name, email, password, phone_no) => {
     const response = await apiClient.post('/auth/register', {
       name,
       email,
       password,
       phone_no,
-      role,
     });
     localStorage.setItem('token', response.data.token);
     setUser(response.data.user);

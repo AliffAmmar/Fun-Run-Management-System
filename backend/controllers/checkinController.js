@@ -18,7 +18,8 @@ const ACTIONS = {
 const MIN_REASON_LENGTH = 3;
 
 const canWork = (event, user) =>
-  user.role === 'admin' || (event && String(event.organizer_id) === String(user.userId));
+  user.role === 'admin' ||
+  (user.role === 'organizer' && event && String(event.organizer_id) === String(user.userId));
 
 // Loads the order + event and applies the access rules. Returns { order, event } or sends the
 // response itself and returns null.

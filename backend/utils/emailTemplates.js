@@ -163,4 +163,19 @@ function certificatesReadyEmail({ buyer, order, event, count }) {
   return { subject, text, html, attachments: [] };
 }
 
-module.exports = { orderConfirmationEmail, passwordResetEmail, certificateEmail, certificatesReadyEmail };
+// Sent when an admin changes someone's role.
+function roleChangedEmail({ user, role }) {
+  const organizer = role === 'organizer';
+  const subject = organizer ? 'You can now organise events on Run4Fun' : 'Your Run4Fun account was changed to participant';
+  const lines = organizer
+    ? ['An admin has made your account an organizer.', `You can now create and manage events: ${appUrl()}/manage-events`]
+    : ['An admin has changed your account to a participant. You can still register for events.'];
+  const text = [`Hi ${user.name},`, '', ...lines].join('\n');
+  const html = layout(
+    organizer ? "You're now an organizer" : 'Account updated',
+    `<p>Hi ${escapeHtml(user.name)},</p>${lines.map((l) => `<p>${escapeHtml(l)}</p>`).join('')}`
+  );
+  return { subject, text, html, attachments: [] };
+}
+
+module.exports = { orderConfirmationEmail, passwordResetEmail, certificateEmail, certificatesReadyEmail, roleChangedEmail };

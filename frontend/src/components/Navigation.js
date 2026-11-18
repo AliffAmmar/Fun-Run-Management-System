@@ -67,6 +67,12 @@ export default function Navigation() {
                 </Link>
               )}
 
+              {user.role === 'admin' && (
+                <Link to="/admin/users" className="hover:text-orange-200 transition duration-300 text-sm uppercase tracking-wide">
+                  Users
+                </Link>
+              )}
+
               {['organizer', 'admin'].includes(user.role) && (
                 <Link to="/event-day" className="hover:text-orange-200 transition duration-300 text-sm uppercase tracking-wide">
                   Event Day

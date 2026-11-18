@@ -22,6 +22,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import EventCertificates from './pages/EventCertificates';
 import VerifyCertificate from './pages/VerifyCertificate';
+import AdminUsers from './pages/AdminUsers';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -35,6 +36,11 @@ const ProtectedRoute = ({ children }) => {
   // Remember where the user was going (e.g. a scanned /checkin/FR-1012 link) so Login can
   // send them back there.
   return isAuthenticated ? children : <Navigate to="/login" state={{ from: location.pathname + location.search }} />;
+};
+
+const AdminRoute = ({ children }) => {
+  const { user } = useAuth();
+  return user?.role === 'admin' ? children : <Navigate to="/events" replace />;
 };
 
 const ReportRoleRoute = ({ children }) => {
@@ -88,6 +94,16 @@ function AppContent() {
               <ReportRoleRoute>
                 <EventCertificates />
               </ReportRoleRoute>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminUsers />
+              </AdminRoute>
             </ProtectedRoute>
           }
         />

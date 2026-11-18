@@ -13,7 +13,9 @@ const hashToken = (token) => crypto.createHash('sha256').update(token).digest('h
 
 const register = async (req, res) => {
   try {
-    const { name, email, password, phone_no, role } = req.body;
+    // `role` is NOT read from the request: everyone signs up as a participant.
+    // An admin makes someone an organizer (Admin → Users page, or scripts/setRole.js).
+    const { name, email, password, phone_no } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -31,7 +33,7 @@ const register = async (req, res) => {
       email,
       password: hashedPassword,
       phone_no,
-      role: role || 'participant',
+      role: 'participant',
     });
 
     // Create welcome notification

@@ -12,6 +12,7 @@ const reportRoutes = require('./routes/reports');
 const orderRoutes = require('./routes/orders');
 const checkinRoutes = require('./routes/checkin');
 const certificateRoutes = require('./routes/certificates');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/checkin', checkinRoutes);
 app.use('/api/certificates', certificateRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

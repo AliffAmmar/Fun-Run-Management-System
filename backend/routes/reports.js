@@ -5,11 +5,11 @@ const {
   exportEventReport,
   getEventHistory,
 } = require('../controllers/reportController');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.use(authMiddleware);
+router.use(authMiddleware, requireRole('organizer', 'admin'));
 router.get('/overview', getOverview);
 router.get('/event/:eventId/summary', getEventSummary);
 router.post('/event/:eventId/export', exportEventReport);

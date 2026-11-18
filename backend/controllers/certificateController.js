@@ -17,7 +17,8 @@ const {
 
 const MAX_BACKGROUND_BYTES = 4 * 1024 * 1024;
 
-const canManage = (event, user) => user.role === 'admin' || String(event.organizer_id) === String(user.userId);
+const canManage = (event, user) =>
+  user.role === 'admin' || (user.role === 'organizer' && String(event.organizer_id) === String(user.userId));
 const kickSender = () =>
   setImmediate(() => processPendingCertificates().catch((e) => console.error('[certificates]', e.message)));
 const safeFile = (s) => String(s).replace(/[^\w.-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'certificate';
@@ -249,7 +250,7 @@ const resendCertificate = async (req, res) => {
 async function canDownload(order, user) {
   if (user.role === 'admin' || String(order.user_id) === String(user.userId)) return true;
   const event = await Event.findById(order.event_id).select('organizer_id');
-  return Boolean(event) && String(event.organizer_id) === String(user.userId);
+  return Boolean(event) && canManage(event, user);
 }
 
 // GET /api/certificates/:certificateNo/pdf

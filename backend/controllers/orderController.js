@@ -12,7 +12,7 @@ const { editDeadline } = require('../utils/editWindow');
 
 const isAdmin = (user) => user.role === 'admin';
 const isEventOrganizer = (event, user) =>
-  Boolean(event) && String(event.organizer_id) === String(user.userId);
+  Boolean(event) && user.role === 'organizer' && String(event.organizer_id) === String(user.userId);
 const isBuyer = (order, user) => String(order.user_id?._id || order.user_id) === String(user.userId);
 
 // Shirt-size totals derived from the participant rows (never entered separately).

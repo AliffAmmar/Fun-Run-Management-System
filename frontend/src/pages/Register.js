@@ -8,7 +8,6 @@ export default function Register() {
     email: '',
     password: '',
     phone_no: '',
-    role: 'participant',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,8 +32,7 @@ export default function Register() {
         formData.name,
         formData.email,
         formData.password,
-        formData.phone_no,
-        formData.role
+        formData.phone_no
       );
       navigate('/events');
     } catch (err) {
@@ -104,18 +102,10 @@ export default function Register() {
             />
           </div>
 
-          <div className="mb-6">
-            <label className="block text-gray-700 font-semibold mb-2">Role</label>
-            <select
-              name="role"
-              value={formData.role}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-            >
-              <option value="participant">Participant</option>
-              <option value="organizer">Organizer</option>
-            </select>
-          </div>
+          {/* Everyone signs up as a participant; an admin makes organizers (Admin → Users). */}
+          <p className="mb-6 text-sm text-gray-600 bg-orange-50 border border-orange-200 rounded-lg p-3">
+            Organising a run? Sign up first, then ask the Run4Fun admin to make your account an organizer.
+          </p>
 
           <button
             type="submit"
