@@ -5,6 +5,8 @@ const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const { escapeRegex } = require('../utils/regex');
 const { heldByCategory, validateCategories, checkCategoryChanges } = require('../utils/capacity');
+const { attachImages } = require('../utils/eventImages');
+const EventImage = require('../models/EventImage');
 
 const createEvent = async (req, res) => {
   try {
@@ -119,6 +121,7 @@ const deleteEvent = async (req, res) => {
     }
 
     await Event.findByIdAndDelete(id);
+    await EventImage.deleteMany({ event_id: id }); // its pictures go too
 
     res.json({ message: 'Event deleted successfully' });
   } catch (error) {
@@ -144,7 +147,7 @@ const getEventById = async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    const [withAvailability] = await addAvailability([event.toObject()]);
+    const [withAvailability] = await addAvailability(await attachImages([event.toObject()]));
     res.json({ event: withAvailability });
   } catch (error) {
     res.status(500).json({ message: 'Failed to get event', error: error.message });
@@ -205,7 +208,7 @@ const getAllEvents = async (req, res) => {
       .populate('organizer_id', 'name email')
       .lean();
 
-    res.json({ events: await addAvailability(events) });
+    res.json({ events: await addAvailability(await attachImages(events)) });
   } catch (error) {
     res.status(500).json({ message: 'Failed to get events', error: error.message });
   }
@@ -213,9 +216,9 @@ const getAllEvents = async (req, res) => {
 
 const getOrganizerEvents = async (req, res) => {
   try {
-    const events = await Event.find({ organizer_id: req.user.userId });
+    const events = await Event.find({ organizer_id: req.user.userId }).lean();
 
-    res.json({ events });
+    res.json({ events: await attachImages(events) });
   } catch (error) {
     res.status(500).json({ message: 'Failed to get events', error: error.message });
   }

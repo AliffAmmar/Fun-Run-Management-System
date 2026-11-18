@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 import { fromLocalInputValue, toLocalInputValue } from '../utils/dates';
 import LocationAutocomplete from '../components/LocationAutocomplete';
 
 import CategoryEditor, { categoriesError, toApiCategories, totalCapacity } from '../components/events/CategoryEditor';
+import EventImagesEditor from '../components/events/EventImagesEditor';
 
 export default function EditEvent() {
   const navigate = useNavigate();
@@ -12,6 +13,10 @@ export default function EditEvent() {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Pictures are saved on their own (EventImagesEditor), not with the form below.
+  const [images, setImages] = useState({ cover_image: null, info_images: [] });
+  const location = useLocation();
+  const justCreated = new URLSearchParams(location.search).get('new') === '1';
   const [formData, setFormData] = useState({
     event_name: '',
     description: '',
@@ -26,6 +31,13 @@ export default function EditEvent() {
   useEffect(() => {
     fetchEventData();
   }, [eventId]);
+
+  // Coming from "Create event": jump to the Pictures section once loaded.
+  useEffect(() => {
+    if (!loading && location.hash === '#pictures') {
+      document.getElementById('pictures')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [loading, location.hash]);
 
   const fetchEventData = async () => {
     try {
@@ -47,6 +59,7 @@ export default function EditEvent() {
         })),
       });
 
+      setImages({ cover_image: event.cover_image || null, info_images: event.info_images || [] });
       setLoading(false);
     } catch (err) {
       setError('Failed to load event data');
@@ -248,6 +261,21 @@ export default function EditEvent() {
               </button>
             </div>
           </form>
+        </div>
+
+        {/* Pictures: cover + info pictures (saved immediately) */}
+        <div className="bg-white rounded-2xl shadow-xl p-5 sm:p-8 mt-8">
+          {justCreated && (
+            <div className="bg-green-100 border-l-4 border-green-500 text-green-800 p-4 rounded-lg font-semibold mb-6">
+              Event created and published! Add a cover picture and info pictures (kit, size chart, poster) below.
+            </div>
+          )}
+          <EventImagesEditor
+            eventId={eventId}
+            coverImage={images.cover_image}
+            infoImages={images.info_images}
+            onChange={setImages}
+          />
         </div>
       </div>
     </div>

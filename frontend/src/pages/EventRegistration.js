@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import MemberTable from '../components/registration/MemberTable';
 import CsvUpload from '../components/registration/CsvUpload';
 import ShirtSizeSummary from '../components/registration/ShirtSizeSummary';
+import { ImageViewer } from '../components/events/ImageGallery';
 import {
   SHIRT_SIZES,
   MIN_GROUP_SIZE,
@@ -73,6 +74,7 @@ export default function EventRegistration() {
   const [order, setOrder] = useState(null);
   const [warnings, setWarnings] = useState([]);
   const [paymentMode, setPaymentMode] = useState(null);
+  const [showInfo, setShowInfo] = useState(false); // organizer's size chart / kit pictures
   const [paying, setPaying] = useState(false);
 
   useEffect(() => {
@@ -368,6 +370,7 @@ export default function EventRegistration() {
                             ))}
                           </div>
                           <p className="text-sm text-slate-500 mt-1">Choose the cut you prefer. It doesn't have to match your gender.</p>
+                          <InfoLink event={event} onOpen={() => setShowInfo(true)} />
                         </div>
                         <div>
                           <label htmlFor="self_size" className={label}>
@@ -469,7 +472,8 @@ export default function EventRegistration() {
                     />
 
                     <div>
-                      <p className="font-bold text-slate-800 mb-1">…or type the members in</p>
+                      <InfoLink event={event} onOpen={() => setShowInfo(true)} />
+                      <p className="font-bold text-slate-800 mb-1 mt-3">…or type the members in</p>
                       <p className="text-sm text-slate-600 mb-3">
                         Email is optional. Runners with an email get their certificate sent to them after the event;
                         for the others, you download it from My Tickets.
@@ -681,7 +685,20 @@ export default function EventRegistration() {
           </div>
         </div>
       </div>
+      {showInfo && event?.info_images?.length > 0 && (
+        <ImageViewer images={event.info_images} onClose={() => setShowInfo(false)} />
+      )}
     </div>
+  );
+}
+
+// "Size chart & kit info" link, shown only when the organizer added info pictures.
+function InfoLink({ event, onOpen }) {
+  if (!event?.info_images?.length) return null;
+  return (
+    <button type="button" onClick={onOpen} className="mt-2 text-sm font-bold text-orange-600 hover:underline">
+      📏 Size chart &amp; kit info ({event.info_images.length})
+    </button>
   );
 }
 

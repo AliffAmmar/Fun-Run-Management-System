@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 import { useAuth } from '../context/AuthContext';
+import { imageSrc } from '../utils/eventImages';
 
 export default function EventsList() {
   const [events, setEvents] = useState([]);
@@ -196,8 +197,9 @@ export default function EventsList() {
                   {/* Image */}
                   <div className="relative h-56 overflow-hidden bg-gradient-to-br from-orange-400 to-red-600">
                     <img
-                      src={getRandomImage(idx)}
+                      src={event.cover_image ? imageSrc(event.cover_image) : getRandomImage(idx)}
                       alt={event.event_name}
+                      loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>

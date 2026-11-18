@@ -81,7 +81,8 @@ export default function CreateEvent() {
       });
 
       await apiClient.post(`/events/${response.data.event._id}/publish`);
-      navigate('/manage-events');
+      // Next: add a cover and info pictures (they need the event to exist first).
+      navigate(`/edit-event/${response.data.event._id}?new=1#pictures`);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to create event');
     } finally {

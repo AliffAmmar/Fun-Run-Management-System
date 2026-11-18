@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 import { useAuth } from '../context/AuthContext';
+import { imageSrc } from '../utils/eventImages';
+import ImageGallery from '../components/events/ImageGallery';
 
 export default function EventDetail() {
   const { id } = useParams();
@@ -69,9 +71,10 @@ export default function EventDetail() {
       {/* Hero Image Section */}
       <div className="relative h-96 overflow-hidden bg-gradient-to-br from-slate-900 via-red-700 to-orange-600">
         <img
-          src={runImages[Math.floor(Math.random() * runImages.length)]}
+          // The organizer's cover picture; otherwise a stock photo (stable per event, not random per render).
+          src={event.cover_image ? imageSrc(event.cover_image) : runImages[parseInt(String(event._id).slice(-2), 16) % runImages.length]}
           alt={event.event_name}
-          className="w-full h-full object-cover opacity-60"
+          className={`w-full h-full object-cover ${event.cover_image ? 'opacity-80' : 'opacity-60'}`}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
         <button
@@ -162,6 +165,15 @@ export default function EventDetail() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Info pictures from the organizer: kit, size chart, poster… */}
+            {event.info_images?.length > 0 && (
+              <div className="mb-10">
+                <h2 className="text-2xl font-black text-slate-900 mb-2">Event info</h2>
+                <p className="text-slate-600 mb-4">Kit, size chart and more from the organizer. Tap a picture to enlarge.</p>
+                <ImageGallery images={event.info_images} />
               </div>
             )}
 
