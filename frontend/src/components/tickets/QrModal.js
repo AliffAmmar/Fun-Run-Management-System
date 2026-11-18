@@ -27,6 +27,12 @@ export default function QrModal({ order, onClose }) {
           : order.participants?.[0]?.name}
       </p>
       <p className="mt-2 text-sm text-slate-500">Turn up your screen brightness. Tap anywhere to close.</p>
+      {/localhost|127\.0\.0\.1/.test(checkinUrl(order.order_no)) && (
+        <p className="mt-4 max-w-sm text-sm font-semibold text-amber-800 bg-amber-50 border border-amber-300 rounded-lg p-3">
+          This QR points to "localhost", which a phone can't open. Open the site using the computer's network address
+          (e.g. http://192.168.x.x:3000) or set REACT_APP_PUBLIC_URL.
+        </p>
+      )}
     </div>
   );
 }
