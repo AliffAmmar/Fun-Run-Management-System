@@ -4,6 +4,7 @@ const User = require('../models/User');
 const { generateToken } = require('../utils/jwt');
 const { createNotification } = require('./notificationController');
 const { sendEmail } = require('../utils/email');
+const { isAdminEmail } = require('../utils/adminEmails');
 const { passwordResetEmail } = require('../utils/emailTemplates');
 
 const RESET_MINUTES = 30;
@@ -33,7 +34,8 @@ const register = async (req, res) => {
       email,
       password: hashedPassword,
       phone_no,
-      role: 'participant',
+      // Everyone is a participant, except emails listed in ADMIN_EMAILS (server config).
+      role: isAdminEmail(email) ? 'admin' : 'participant',
     });
 
     // Create welcome notification
@@ -84,6 +86,12 @@ const login = async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    // Listed in ADMIN_EMAILS but not admin yet (account existed before the setting): promote now.
+    if (isAdminEmail(user.email) && user.role !== 'admin') {
+      user.role = 'admin';
+      await User.updateOne({ _id: user._id }, { role: 'admin' });
     }
 
     const token = generateToken(user._id, user.role, user.email);

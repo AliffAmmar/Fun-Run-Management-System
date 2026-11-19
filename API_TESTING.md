@@ -21,7 +21,7 @@ The backend's automated tests (`backend/tests/*.test.js`) are the most complete 
 
 | Method | Path | Access | Notes |
 |---|---|---|---|
-| POST | `/auth/register` | public | `{ name, email, password, phone_no? }` → always a **participant** (any `role` sent is ignored) |
+| POST | `/auth/register` | public | `{ name, email, password, phone_no? }` → a **participant** (any `role` sent is ignored), or admin if the email is in `ADMIN_EMAILS` |
 | POST | `/auth/login` | public | `{ email, password }` → `{ token, user }` (email case-insensitive) |
 | POST | `/auth/forgot-password` | public | `{ email }` → same reply whether or not it exists; emails a 30-minute single-use link |
 | POST | `/auth/reset-password` | public | `{ token, password }` |
@@ -42,7 +42,8 @@ The backend's automated tests (`backend/tests/*.test.js`) are the most complete 
 | GET | `/admin/users?q=&role=&page=` | admin | search users (50 per page) with `event_count` |
 | PATCH | `/admin/users/:id/role` | admin | `{ role: participant\|organizer }`; admins (incl. yourself) can't be changed here |
 
-The first admin is created with `node scripts/setRole.js <email> admin` (from `backend/`).
+Admins are made by the server only: list their emails in `ADMIN_EMAILS` (backend `.env`; applied at
+sign-up or next login), or run `node scripts/setRole.js <email> admin` (from `backend/`).
 
 ## Events: `/api/events`
 

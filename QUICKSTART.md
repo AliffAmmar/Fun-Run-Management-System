@@ -53,10 +53,10 @@ cd frontend && npm start      # opens http://localhost:3000
 
 1. Open http://localhost:3000 and **sign up two accounts**: one for yourself as a runner, and one to
    become the **admin** (everyone signs up as a participant).
-2. Make the second one admin:
-   ```bash
-   cd backend && node scripts/setRole.js admin@example.com admin
-   ```
+2. Make the second one admin, either:
+   - add it to `ADMIN_EMAILS` in `backend/.env` (e.g. `ADMIN_EMAILS=admin@example.com`) and restart the
+     backend: it becomes admin at sign-up, or at its next login if it already exists; or
+   - run `cd backend && node scripts/setRole.js admin@example.com admin`
 3. For an **organizer**: log in as a participant → **Profile → Request organizer access** →
    log in as the admin → **Users → Requests → Approve**. (Or `node scripts/setRole.js <email> organizer`.)
 4. Demo events, registrations, payments and sponsors (owned by the first organizer, bought by the

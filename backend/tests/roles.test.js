@@ -128,3 +128,38 @@ describe('deleted accounts', () => {
     expect((await as(p).get('/api/orders/my-orders')).status).toBe(401);
   });
 });
+
+describe('ADMIN_EMAILS (server setting)', () => {
+  beforeEach(() => {
+    process.env.ADMIN_EMAILS = 'boss@example.com, Second.Admin@Example.com';
+  });
+  afterEach(() => {
+    delete process.env.ADMIN_EMAILS;
+  });
+  const signup = (email) =>
+    request(app).post('/api/auth/register').send({ name: 'X', email, password: 'secret123' });
+
+  it('a listed email becomes admin at sign-up (case-insensitive); others stay participants', async () => {
+    expect((await signup('BOSS@example.com')).body.user.role).toBe('admin');
+    expect((await signup('second.admin@example.com')).body.user.role).toBe('admin');
+    expect((await signup('someone@example.com')).body.user.role).toBe('participant');
+  });
+
+  it('an existing account is promoted at its next login', async () => {
+    delete process.env.ADMIN_EMAILS;
+    await signup('boss@example.com'); // created before the setting existed
+    expect((await User.findOne({ email: 'boss@example.com' })).role).toBe('participant');
+
+    process.env.ADMIN_EMAILS = 'boss@example.com';
+    const res = await request(app).post('/api/auth/login').send({ email: 'boss@example.com', password: 'secret123' });
+    expect(res.body.user.role).toBe('admin');
+    expect((await User.findOne({ email: 'boss@example.com' })).role).toBe('admin');
+  });
+
+  it('cannot be triggered from the website by sending a role', async () => {
+    const res = await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'X', email: 'sneaky@example.com', password: 'secret123', role: 'admin' });
+    expect(res.body.user.role).toBe('participant');
+  });
+});

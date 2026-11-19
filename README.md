@@ -132,6 +132,7 @@ Full instructions, a demo walkthrough, phone testing and troubleshooting: [QUICK
 | `EMAIL_MODE` | `console` (print, default) · `ethereal` (fake inbox with preview links) · `smtp` |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | for `EMAIL_MODE=smtp` (e.g. Brevo) |
 | `EMAIL_DAILY_LIMIT` | provider's daily cap (default 300); the certificate sender stops before it |
+| `ADMIN_EMAILS` | comma-separated emails that become **admin** automatically (at sign-up, or at their next login) |
 
 **Frontend** (`frontend/.env`, see `frontend/.env.example`):
 
