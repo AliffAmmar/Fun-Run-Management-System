@@ -42,6 +42,8 @@ const buildExportRows = (event, metrics) => {
     ['Pending payments', metrics.payment_counts.pending],
     ['Failed payments', metrics.payment_counts.failed],
     ['Refunded payments', metrics.payment_counts.refunded],
+    ['Confirmed sponsors', metrics.sponsorship?.sponsor_count ?? 0],
+    ['Total sponsorship (cash)', (metrics.sponsorship?.total_cash ?? 0).toFixed(2)],
     [],
     ['Race category', 'Participants', 'Capacity', 'Revenue'],
   ];
@@ -62,6 +64,11 @@ const buildExportRows = (event, metrics) => {
   for (const [size, count] of Object.entries(metrics.breakdowns.by_shirt_size)) {
     rows.push([size, count, byType.male[size] || 0, byType.female[size] || 0]);
   }
+  const sp = metrics.sponsorship || { by_tier: {}, in_kind: [] };
+  rows.push([], ['Sponsor tier', 'Sponsors', 'Cash sponsorship']);
+  for (const [tier, v] of Object.entries(sp.by_tier)) rows.push([tier, v.sponsors, v.cash.toFixed(2)]);
+  rows.push([], ['In-kind sponsor', 'Contribution']);
+  for (const item of sp.in_kind) rows.push([item.name, item.description]);
   rows.push([], ['Registration date', 'Registrations']);
   for (const item of metrics.breakdowns.registrations_per_day) {
     rows.push([item.date, item.count]);
@@ -157,6 +164,8 @@ const exportEventReport = async (req, res) => {
     document.text(`Attendance rate: ${(metrics.attendance_rate * 100).toFixed(1)}%`);
     document.text(`Kits collected: ${metrics.kit_collected_participants} (${(metrics.kit_collection_rate * 100).toFixed(1)}%)`);
     document.text(`Payments pending / failed / refunded: ${metrics.payment_counts.pending} / ${metrics.payment_counts.failed} / ${metrics.payment_counts.refunded}`);
+    const sponsorship = metrics.sponsorship || { sponsor_count: 0, total_cash: 0, by_tier: {}, in_kind: [] };
+    document.text(`Sponsors (confirmed): ${sponsorship.sponsor_count} · Total cash sponsorship: ${sponsorship.total_cash.toFixed(2)}`);
 
     const writeSection = (title, entries, render) => {
       document.moveDown().fontSize(14).text(title);
@@ -173,6 +182,10 @@ const exportEventReport = async (req, res) => {
     const shirtTypes = metrics.breakdowns.by_shirt_type_size || { male: {}, female: {} };
     writeSection('Shirt sizes', Object.entries(metrics.breakdowns.by_shirt_size), (key, value) =>
       `${key}: ${value} (male ${shirtTypes.male[key] || 0}, female ${shirtTypes.female[key] || 0})`);
+    writeSection('Sponsors by tier', Object.entries(sponsorship.by_tier), (key, value) =>
+      `${key}: ${value.sponsors} sponsor(s), ${value.cash.toFixed(2)} cash`);
+    writeSection('In-kind sponsorship', sponsorship.in_kind.map((i) => [i.name, i.description]), (key, value) =>
+      `${key}: ${value || '(no description)'}`);
     writeSection('Registrations per day', metrics.breakdowns.registrations_per_day.map((item) => [item.date, item.count]),
       (key, value) => `${key}: ${value}`);
     document.end();

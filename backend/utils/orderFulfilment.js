@@ -10,6 +10,7 @@ const User = require('../models/User');
 const Participant = require('../models/Participant');
 const { sendEmail } = require('./email');
 const { orderConfirmationEmail } = require('./emailTemplates');
+const { sponsorLogos } = require('./sponsors');
 const { assignBibNumbers } = require('./numbering');
 const { createNotification } = require('../controllers/notificationController');
 
@@ -96,7 +97,8 @@ async function sendConfirmationEmail(order) {
     Participant.find({ order_id: order._id }).sort({ bib_number: 1 }),
   ]);
   if (!event || !buyer?.email) return;
-  const email = await orderConfirmationEmail({ order, event, buyer, participants });
+  const sponsors = await sponsorLogos(event._id, { limit: 10, requireLogo: false }).catch(() => []);
+  const email = await orderConfirmationEmail({ order, event, buyer, participants, sponsors });
   await sendEmail({ to: buyer.email, ...email });
 }
 

@@ -132,6 +132,14 @@ export default function EventReport() {
     key: size,
     cells: [size, shirtTypes.male?.[size] || 0, shirtTypes.female?.[size] || 0, count],
   }));
+  // Sponsorship (Sponsor module): confirmed sponsors per tier + in-kind items.
+  const sponsorship = metrics?.sponsorship || { sponsor_count: 0, total_cash: 0, by_tier: {}, in_kind: [], prospect_count: 0, prospect_cash: 0 };
+  const sponsorTierRows = Object.entries(sponsorship.by_tier).map(([tier, value]) => ({
+    key: tier,
+    cells: [tier, value.sponsors, formatCurrency(value.cash)],
+  }));
+  const inKindRows = sponsorship.in_kind.map((item, i) => ({ key: `${item.name}-${i}`, cells: [item.name, item.description || '—'] }));
+
   const paymentRows = Object.entries(metrics?.breakdowns?.by_payment_method || {}).map(([method, value]) => ({
     key: method,
     cells: [method.replaceAll('_', ' '), value.payments, formatCurrency(value.amount),
@@ -163,18 +171,26 @@ export default function EventReport() {
         {error && <div role="alert" className="mb-5 rounded-lg border-l-4 border-red-500 bg-red-50 px-5 py-4 text-red-800">{error}</div>}
         {success && <div role="status" className="mb-5 rounded-lg border-l-4 border-green-500 bg-green-50 px-5 py-4 text-green-800">{success}</div>}
 
-        <section aria-label="Event statistics" className="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <section aria-label="Event statistics" className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Stat label="Participants" value={metrics.total_participants} detail={`${metrics.registration_count} registrations`} />
           <Stat label="Revenue" value={formatCurrency(metrics.total_revenue)} accent="border-red-500" />
           <Stat label="Capacity used" value={formatPercent(metrics.capacity_utilization)} detail={`${event?.capacity || 0} capacity`} accent="border-amber-500" />
           <Stat label="Attendance rate" value={formatPercent(metrics.attendance_rate)} detail={`${metrics.checked_in_participants} checked in`} accent="border-green-600" />
           <Stat label="Kits collected" value={formatPercent(metrics.kit_collection_rate || 0)} detail={`${metrics.kit_collected_participants || 0} runners`} accent="border-blue-500" />
+          <Stat
+            label="Sponsorship"
+            value={formatCurrency(sponsorship.total_cash)}
+            detail={`${sponsorship.sponsor_count} sponsor(s)${sponsorship.prospect_count ? ` · ${sponsorship.prospect_count} prospect(s)` : ''}`}
+            accent="border-purple-500"
+          />
         </section>
 
         <div className="grid gap-8 xl:grid-cols-2">
           <BreakdownTable title="Race category" headers={['Category', 'Participants / capacity', 'Revenue']} rows={categoryRows} emptyMessage="No category data yet." />
           <BreakdownTable title="Shirt sizes" headers={['Size', 'Male', 'Female', 'Total']} rows={shirtRows} emptyMessage="No confirmed shirt-size data yet." />
           <BreakdownTable title="Payment methods" headers={['Method', 'Payments', 'Successful amount', 'Statuses']} rows={paymentRows} emptyMessage="No payment data yet." />
+          <BreakdownTable title="Sponsors by tier" headers={['Tier', 'Sponsors', 'Cash sponsorship']} rows={sponsorTierRows} emptyMessage="No confirmed sponsors yet." />
+          <BreakdownTable title="In-kind sponsorship" headers={['Sponsor', 'Contribution']} rows={inKindRows} emptyMessage="No in-kind sponsorship." />
 
           <section className="border-y border-slate-200 bg-white">
             <div className="border-b border-slate-200 px-5 py-4">

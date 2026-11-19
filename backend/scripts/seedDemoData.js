@@ -19,6 +19,7 @@ const Participant = require('../models/Participant');
 const Counter = require('../models/Counter');
 const Payment = require('../models/Payment');
 const EventImage = require('../models/EventImage');
+const Sponsor = require('../models/Sponsor');
 const Certificate = require('../models/Certificate');
 const CertificateBackground = require('../models/CertificateBackground');
 const CheckinLog = require('../models/CheckinLog');
@@ -147,6 +148,7 @@ async function main() {
   await Payment.deleteMany({ order_id: { $in: oldOrderIds } });
   await Certificate.deleteMany({ event_id: { $in: oldIds } });
   await EventImage.deleteMany({ event_id: { $in: oldIds } });
+  await Sponsor.deleteMany({ event_id: { $in: oldIds } });
   await CertificateBackground.deleteMany({ event_id: { $in: oldIds } });
   await CheckinLog.deleteMany({ event_id: { $in: oldIds } });
   await Participant.deleteMany({ event_id: { $in: oldIds } });
@@ -229,6 +231,17 @@ async function main() {
     await createOrder({ event: pastRun, buyer: buyer(2), type: 'group', group_name: 'Pejabat Sihat',
       race_category: '5km', members: makeMembers(4), status: 'paid', kitCollectedBy: organizer }),
   ];
+
+  // ---- Sponsors (made-up local businesses; tiers named by the organizer) -----------
+  await Sponsor.insertMany([
+    { event_id: charityRun._id, name: 'KL Sports Hub', tier: 'Platinum', tier_order: 1, amount: 5000, website_url: 'https://example.com/kl-sports-hub', contact_name: 'Encik Rahim', contact_phone: '0123456789' },
+    { event_id: charityRun._id, name: 'Kedai Runner Setia', tier: 'Gold', tier_order: 2, amount: 2000 },
+    { event_id: charityRun._id, name: 'Restoran Nasi Kandar Bersatu', tier: 'Gold', tier_order: 2, amount: 1500 },
+    { event_id: charityRun._id, name: 'Air Segar Mineral Water', tier: 'Water partner', tier_order: 3, contribution_type: 'in_kind', in_kind_description: '600 bottles of water' },
+    { event_id: charityRun._id, name: 'Klinik Sihat Sentosa', tier: 'Medical partner', tier_order: 3, contribution_type: 'in_kind', in_kind_description: 'First-aid team on race day' },
+    { event_id: charityRun._id, name: 'Syarikat Maju Jaya', tier: 'Gold', tier_order: 2, amount: 3000, status: 'prospect' },
+    { event_id: pastRun._id, name: 'Bukit Kiara Cycles', tier: 'Main sponsor', tier_order: 1, amount: 1200 },
+  ]);
 
   // ---- Summary --------------------------------------------------------------
   console.log(`Organizer: ${organizer.name} (${organizer.email})\n`);

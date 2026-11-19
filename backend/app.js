@@ -15,6 +15,7 @@ const certificateRoutes = require('./routes/certificates');
 const adminRoutes = require('./routes/admin');
 const organizerRequestRoutes = require('./routes/organizerRequests');
 const eventImageRoutes = require('./routes/eventImages');
+const sponsorRoutes = require('./routes/sponsors');
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use(cors({
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/events/:eventId/images', eventImageRoutes); // before /api/events
+app.use('/api/events/:eventId/sponsors', sponsorRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);

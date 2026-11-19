@@ -24,7 +24,30 @@ const layout = (title, bodyHtml) => `<!doctype html>
 
 // Sent to the buyer when an order is paid (from fulfilOrder). Includes the order QR as an image:
 // it encodes only the check-in link, never personal data.
-async function orderConfirmationEmail({ order, event, buyer, participants }) {
+// sponsors: [{ name, type, data }] from utils/sponsors.sponsorLogos (optional). Names always listed;
+// small PNG/JPEG logos are embedded (each ≤ 300 KB, ≤ 1 MB together) to keep the email light.
+function sponsorBlock(sponsors = []) {
+  if (!sponsors.length) return { text: null, html: '', attachments: [] };
+  const attachments = [];
+  let total = 0;
+  const tiles = sponsors.map((s, i) => {
+    const ok = s.data && ['image/png', 'image/jpeg'].includes(s.type) && s.data.length <= 300 * 1024 && total + s.data.length <= 1024 * 1024;
+    if (!ok) return `<span style="display:inline-block;margin:4px 8px;font-weight:bold;color:#334155">${escapeHtml(s.name)}</span>`;
+    total += s.data.length;
+    const cid = `sponsor-${i}`;
+    attachments.push({ filename: `sponsor-${i}.${s.type === 'image/png' ? 'png' : 'jpg'}`, content: s.data, cid });
+    return `<img src="cid:${cid}" alt="${escapeHtml(s.name)}" style="height:40px;max-width:120px;object-fit:contain;margin:4px 10px;vertical-align:middle">`;
+  });
+  return {
+    text: `Sponsored by: ${sponsors.map((s) => s.name).join(' · ')}`,
+    html: `<div style="border-top:1px solid #e2e8f0;margin-top:24px;padding-top:16px;text-align:center">
+             <div style="font-size:12px;color:#64748b;margin-bottom:6px">Sponsored by</div>${tiles.join('')}</div>`,
+    attachments,
+  };
+}
+
+async function orderConfirmationEmail({ order, event, buyer, participants, sponsors = [] }) {
+  const sponsorPart = sponsorBlock(sponsors);
   const checkinLink = `${appUrl()}/checkin/${order.order_no}`;
   const ticketsLink = `${appUrl()}/my-tickets?order=${encodeURIComponent(order.order_no)}`;
   const qrPng = await QRCode.toBuffer(checkinLink, { width: 360, margin: 2 });
@@ -54,6 +77,8 @@ async function orderConfirmationEmail({ order, event, buyer, participants }) {
       ? 'Kit collection: one QR code covers the whole group. Show it at the kit counter with your IC. You can collect for everyone, or runners can collect separately with the same QR (staff tick each runner).'
       : 'Kit collection: show the QR code in this email or in My Tickets, and bring your IC.',
     `My Tickets: ${ticketsLink}`,
+    sponsorPart.text ? '' : null,
+    sponsorPart.text,
   ]
     .filter((line) => line !== null)
     .join('\n');
@@ -88,14 +113,15 @@ async function orderConfirmationEmail({ order, event, buyer, participants }) {
          )
          .join('')}
      </table>
-     <p style="margin-top:24px"><a href="${ticketsLink}" style="background:#ea580c;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Open My Tickets</a></p>`
+     <p style="margin-top:24px"><a href="${ticketsLink}" style="background:#ea580c;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Open My Tickets</a></p>
+     ${sponsorPart.html}`
   );
 
   return {
     subject,
     text,
     html,
-    attachments: [{ filename: `${order.order_no}-qr.png`, content: qrPng, cid: 'order-qr' }],
+    attachments: [{ filename: `${order.order_no}-qr.png`, content: qrPng, cid: 'order-qr' }, ...sponsorPart.attachments],
   };
 }
 

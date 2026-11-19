@@ -13,6 +13,7 @@ const Event = require('../models/Event');
 const Order = require('../models/Order');
 const Participant = require('../models/Participant');
 const Payment = require('../models/Payment');
+const { sponsorshipMetrics } = require('./sponsors');
 
 // Every category of the event is listed (with its own capacity), even before anyone registers.
 const categoryStart = (event) =>
@@ -41,7 +42,14 @@ const emptyMetrics = (event) => ({
   capacity: event.capacity,
 });
 
-const getEventReportMetrics = async (eventId, event) => {
+// Sponsorship figures (Sponsor module) are added to every report:
+// metrics.sponsorship = { sponsor_count, total_cash, by_tier, in_kind[], prospect_count, prospect_cash }.
+const getEventReportMetrics = async (eventId, event) => ({
+  ...(await getOrderMetrics(eventId, event)),
+  sponsorship: await sponsorshipMetrics(eventId),
+});
+
+const getOrderMetrics = async (eventId, event) => {
   const eventObjectId = new mongoose.Types.ObjectId(String(eventId));
   const orders = await Order.find({ event_id: eventObjectId })
     .select('type race_category participant_count status kit_collected checked_in createdAt')

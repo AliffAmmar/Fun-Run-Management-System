@@ -8,6 +8,7 @@ const Participant = require('../models/Participant');
 const Certificate = require('../models/Certificate');
 const CertificateBackground = require('../models/CertificateBackground');
 const { renderCertificatePdf } = require('../utils/certificatePdf');
+const { sponsorLogos } = require('../utils/sponsors');
 const {
   getEligibleParticipants,
   createCertificates,
@@ -178,7 +179,7 @@ const previewCertificate = async (req, res) => {
         bib_number: '0042',
         certificate_no: 'FR-C-PREVIEW0',
       },
-      { textColor: event.certificate_text_color, background }
+      { textColor: event.certificate_text_color, background, sponsors: await sponsorLogos(event._id) }
     );
     res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': 'inline; filename="certificate-preview.pdf"' });
     res.send(pdf);

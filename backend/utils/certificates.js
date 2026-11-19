@@ -14,6 +14,7 @@ const Order = require('../models/Order');
 const Event = require('../models/Event');
 const User = require('../models/User');
 const { renderCertificatePdf } = require('./certificatePdf');
+const { sponsorLogos } = require('./sponsors');
 const { sendEmail, emailsSentToday, dailyLimit } = require('./email');
 const { certificateEmail, certificatesReadyEmail } = require('./emailTemplates');
 
@@ -76,6 +77,7 @@ async function buildCertificatePdf(certificate, { participant, event } = {}) {
     event || Event.findById(certificate.event_id),
     CertificateBackground.findOne({ event_id: certificate.event_id }),
   ]);
+  const sponsors = await sponsorLogos(certificate.event_id);
   const order = await Order.findById(p.order_id).select('race_category');
   return renderCertificatePdf(
     {
@@ -87,7 +89,7 @@ async function buildCertificatePdf(certificate, { participant, event } = {}) {
       bib_number: p.bib_number,
       certificate_no: certificate.certificate_no,
     },
-    { textColor: ev.certificate_text_color, background: bg }
+    { textColor: ev.certificate_text_color, background: bg, sponsors }
   );
 }
 

@@ -7,6 +7,7 @@ const { escapeRegex } = require('../utils/regex');
 const { heldByCategory, validateCategories, checkCategoryChanges } = require('../utils/capacity');
 const { attachImages } = require('../utils/eventImages');
 const EventImage = require('../models/EventImage');
+const Sponsor = require('../models/Sponsor');
 
 const createEvent = async (req, res) => {
   try {
@@ -122,6 +123,7 @@ const deleteEvent = async (req, res) => {
 
     await Event.findByIdAndDelete(id);
     await EventImage.deleteMany({ event_id: id }); // its pictures go too
+    await Sponsor.deleteMany({ event_id: id }); // and its sponsors
 
     res.json({ message: 'Event deleted successfully' });
   } catch (error) {

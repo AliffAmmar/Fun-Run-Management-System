@@ -24,6 +24,7 @@ import EventCertificates from './pages/EventCertificates';
 import VerifyCertificate from './pages/VerifyCertificate';
 import AdminUsers from './pages/AdminUsers';
 import Profile from './pages/Profile';
+import EventSponsors from './pages/EventSponsors';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -85,6 +86,16 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Checkin />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sponsors/:eventId"
+          element={
+            <ProtectedRoute>
+              <ReportRoleRoute>
+                <EventSponsors />
+              </ReportRoleRoute>
             </ProtectedRoute>
           }
         />

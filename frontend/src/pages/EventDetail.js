@@ -4,6 +4,7 @@ import apiClient from '../utils/apiClient';
 import { useAuth } from '../context/AuthContext';
 import { imageSrc } from '../utils/eventImages';
 import ImageGallery from '../components/events/ImageGallery';
+import SponsorStrip from '../components/events/SponsorStrip';
 
 export default function EventDetail() {
   const { id } = useParams();
@@ -176,6 +177,8 @@ export default function EventDetail() {
                 <ImageGallery images={event.info_images} />
               </div>
             )}
+
+            <SponsorStrip eventId={event._id} />
 
             {/* Registration Button */}
             <div className="flex gap-4">

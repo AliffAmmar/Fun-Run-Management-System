@@ -206,6 +206,12 @@ export default function ManageEvents() {
                     >
                       View Report
                     </button>
+                    <button
+                      onClick={() => navigate(`/sponsors/${event._id}`)}
+                      className="bg-white border-2 border-slate-900 hover:bg-slate-100 text-slate-900 font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105 uppercase tracking-wide"
+                    >
+                      Sponsors
+                    </button>
                     {event.status !== 'draft' && (
                       <button
                         onClick={() => navigate(`/certificates/${event._id}`)}

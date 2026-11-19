@@ -25,7 +25,8 @@ function fitFontSize(doc, text, font, max, min, width) {
 }
 
 // data: { name, event_name, event_date, location, race_category, bib_number, certificate_no }
-// design: { textColor: 'dark'|'light', background?: { data: Buffer } }
+// design: { textColor: 'dark'|'light', background?: { data: Buffer },
+//           sponsors?: [{ name, type, data }]  (logos; PNG/JPEG only, up to 6 shown) }
 async function renderCertificatePdf(data, design = {}) {
   const light = design.textColor === 'light';
   const ink = light ? '#ffffff' : '#0f172a';
@@ -77,6 +78,28 @@ async function renderCertificatePdf(data, design = {}) {
     soft
   );
   if (data.bib_number) center(`Bib ${data.bib_number}`, 376, 'Helvetica', 12, soft);
+
+  // ---- Sponsors: "Supported by" + logos on white tiles, centred above the footer ----
+  const logos = (design.sponsors || []).filter((s) => ['image/png', 'image/jpeg'].includes(s.type)).slice(0, 6);
+  if (logos.length) {
+    const tileW = 78;
+    const tileH = 40;
+    const gap = 10;
+    const rowW = logos.length * tileW + (logos.length - 1) * gap;
+    let x = (W - rowW) / 2;
+    const y = 418;
+    center('Supported by', 400, 'Helvetica', 9, soft);
+    for (const s of logos) {
+      doc.save().roundedRect(x, y, tileW, tileH, 4).fill('#ffffff').restore();
+      try {
+        doc.image(s.data, x + 4, y + 4, { fit: [tileW - 8, tileH - 8], align: 'center', valign: 'center' });
+      } catch (err) {
+        // unreadable logo: show the name instead
+        doc.font('Helvetica').fontSize(8).fillColor('#0f172a').text(s.name, x + 4, y + 14, { width: tileW - 8, align: 'center' });
+      }
+      x += tileW + gap;
+    }
+  }
 
   // ---- Footer: certificate number (left), verification QR (right) ----
   const qrSize = 96;
