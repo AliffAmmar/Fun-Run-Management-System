@@ -1,524 +1,193 @@
-# Run4Fun - Full-Stack MERN Fun Run Management System
+# Run4Fun: Fun Run Management System
 
-## 📋 Project Overview
+Run4Fun is a web platform for organising community fun runs: event listing, individual and **group
+registration**, payment, **one QR code per registration** for kit collection and race-day check-in,
+**automated personalised certificates** with QR verification, sponsors, and reports.
 
-Run4Fun is a complete full-stack MERN (MongoDB, Express, React, Node.js) application for managing fun run events. It provides comprehensive features for event discovery, registration, payment processing, and digital ticket generation with QR codes.
+Built with the MERN stack (MongoDB, Express, React, Node.js) as a Final Year Project (Academic Project 2,
+Universiti Malaya).
 
-### Key Features
-
-✅ **JWT Authentication** - Secure user registration and login
-✅ **Event Management** - Organizers can create, edit, and publish events
-✅ **Event Discovery** - Participants can browse and filter events
-✅ **Registration System** - Users can register for events with custom fields
-✅ **Mock Payment Module** - Simulated payment processing (auto-success)
-✅ **QR Ticket Generation** - Automatic QR code generation for tickets
-✅ **Role-Based Access** - Participant, Organizer, and Admin roles
-✅ **Responsive UI** - Built with React and Tailwind CSS
+- **New here?** → [QUICKSTART.md](QUICKSTART.md): run it locally in about 10 minutes.
+- **Calling the API?** → [API_TESTING.md](API_TESTING.md): every endpoint, who may call it, examples.
+- **Module notes:** [REPORT_MODULE.md](REPORT_MODULE.md), [NOTIFICATION_MODULE.md](NOTIFICATION_MODULE.md).
 
 ---
 
-## 📦 Project Structure
+## Features
 
-```
-Run4Fun/
-├── backend/
-│   ├── models/
-│   │   ├── User.js
-│   │   ├── Event.js
-│   │   ├── Registration.js
-│   │   ├── Payment.js
-│   │   └── Ticket.js
-│   ├── controllers/
-│   │   ├── authController.js
-│   │   ├── eventController.js
-│   │   ├── registrationController.js
-│   │   ├── paymentController.js
-│   │   └── ticketController.js
-│   ├── routes/
-│   │   ├── auth.js
-│   │   ├── events.js
-│   │   ├── registrations.js
-│   │   ├── payments.js
-│   │   └── tickets.js
-│   ├── middleware/
-│   │   └── auth.js
-│   ├── utils/
-│   │   ├── jwt.js
-│   │   └── qrcode.js
-│   ├── .env
-│   ├── package.json
-│   └── server.js
-│
-└── frontend/
-    ├── src/
-    │   ├── pages/
-    │   │   ├── Login.js
-    │   │   ├── Register.js
-    │   │   ├── EventsList.js
-    │   │   ├── EventDetail.js
-    │   │   ├── EventRegistration.js
-    │   │   ├── MyTickets.js
-    │   │   └── CreateEvent.js
-    │   ├── components/
-    │   │   └── Navigation.js
-    │   ├── context/
-    │   │   └── AuthContext.js
-    │   ├── utils/
-    │   │   └── apiClient.js
-    │   ├── App.js
-    │   ├── index.js
-    │   └── index.css
-    ├── public/
-    │   └── index.html
-    ├── .env
-    ├── tailwind.config.js
-    ├── postcss.config.js
-    └── package.json
-```
+### Participants (runners)
+- Browse **upcoming / past** events; search by name, location and category. Full categories show **Sold out**.
+- Register **individually** or as a **group of 2–200 runners**, with every runner's name, optional email,
+  **shirt type** (male / female cut, chosen freely) and size. Groups can **upload a CSV**
+  (`name,email,shirt_type,shirt_size`) or type into a table; problems are shown per row.
+- **Payment** (demo mode now; Stripe Checkout planned). Unpaid registrations hold their places for 30 minutes.
+- **My Tickets**: one QR per registration (opens the check-in page for staff), bib numbers, kit / check-in
+  status, "fix a name or shirt size" until the kit cutoff, and certificate downloads (PDF or ZIP).
+- Confirmation email with the QR code; password reset by email; profile page.
+- **Request organizer access** from the profile page.
+
+### Organizers
+- Create and edit events with **capacity per race category**, an optional kit preparation cutoff,
+  a **cover picture** and **info pictures** (kit, size chart, poster…).
+- **Event Day**: scan a runner's QR with a phone camera → **tick runners individually** for kit collection
+  and check-in (a group is complete only when everyone is ticked; remarks; undo with a reason). Search for
+  lost QRs by order number, group, buyer or runner name.
+- **Certificates**: choose a design (built-in or uploaded background), choose who qualifies, then
+  "Mark event as completed" → each runner is emailed their PDF in the background; anyone can verify a
+  certificate at `/verify/<certificate number>`.
+- **Sponsors**: tiers you name yourself, cash or in-kind contributions, logos shown on the event page,
+  certificates and confirmation emails.
+- **Reports**: registrations, runners, revenue, capacity per category, kit collection and attendance,
+  shirts per cut and size, payments, sponsorship; export CSV or PDF.
+
+### Admins
+- **Users**: approve or decline organizer requests; make someone an organizer or a participant.
+- Admins can do everything an organizer can, for any event.
+
+Everyone signs up as a **participant**; organizers are approved by an admin.
 
 ---
 
-## 🚀 Getting Started
+## Tech stack
 
-### Prerequisites
-
-- **Node.js** (v14 or higher)
-- **MongoDB** (local or cloud - MongoDB Atlas)
-- **npm** or **yarn**
-
-### Backend Setup
-
-1. **Navigate to backend directory:**
-   ```bash
-   cd backend
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Configure environment variables:**
-   
-   The `.env` file is already created. Update it with your settings:
-   ```
-   MONGODB_URI=mongodb://localhost:27017/run4fun
-   JWT_SECRET=your_jwt_secret_key_change_this_in_production
-   PORT=5000
-   NODE_ENV=development
-   FRONTEND_URL=http://localhost:3000
-   ```
-
-   **For MongoDB Atlas Cloud:**
-   ```
-   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/run4fun?retryWrites=true&w=majority
-   ```
-
-4. **Start MongoDB** (if using local):
-   ```bash
-   # Windows
-   net start MongoDB
-   
-   # macOS
-   brew services start mongodb-community
-   
-   # Linux
-   sudo systemctl start mongod
-   ```
-
-5. **Start the backend server:**
-   ```bash
-   npm run dev
-   ```
-
-   The backend will be running at `http://localhost:5000`
+| Layer | Technology |
+|---|---|
+| Frontend | React 18 (Create React App), React Router 6, Tailwind CSS, axios, `qrcode.react`, `papaparse` |
+| Backend | Node.js, Express 4, Mongoose 7, JWT (`jsonwebtoken`), `bcryptjs` |
+| Documents | `pdfkit` (certificates, PDF reports), `qrcode`, `archiver` (certificate ZIPs) |
+| Email | `nodemailer`: console / Ethereal (fake inbox) / any SMTP (Brevo free plan) |
+| Tests | Jest + supertest + `mongodb-memory-server` (backend); Jest via react-scripts (frontend) |
 
 ---
 
-### Frontend Setup
+## Project structure
 
-1. **In a new terminal, navigate to frontend directory:**
-   ```bash
-   cd frontend
-   ```
+```
+backend/
+  app.js                 Express app: middleware + routes (no DB, no listen; used by tests)
+  server.js              connects to MongoDB, starts the server and the certificate sender
+  models/                Event, Order, Participant, Payment, Certificate, Sponsor, User, Notification,
+                         CheckinLog, OrganizerRequest, EventImage, Counter, Report, …
+  controllers/           one per module (orderController, checkinController, certificateController, …)
+  routes/                URL → controller; access rules via middleware/auth.js
+  utils/                 shared logic: capacity, numbering (order/bib numbers), orderFulfilment,
+                         email + emailTemplates, certificates + certificatePdf, shirts, sponsors, …
+  scripts/               seedDemoData.js, seedReportData.js, setRole.js
+  tests/                 Jest tests (in-memory MongoDB; never touches your data)
+frontend/
+  src/pages/             one file per page (EventRegistration, MyTickets, Checkin, EventDay, …)
+  src/components/        registration/, tickets/, events/, admin/, profile/, auth/
+  src/utils/             apiClient, participants (CSV + validation), dates, eventImages, …
+  src/setupProxy.js      development: forwards /api to the backend (one address for phones/tunnels)
+```
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Start the development server:**
-   ```bash
-   npm start
-   ```
-
-   The frontend will open at `http://localhost:3000`
+### Core data model
+- **Order** = one registration / payment / QR code (`order_no`, e.g. `FR-1042`). Individual = 1 runner,
+  group = 2–200.
+- **Participant** = one runner in an order (name, email, shirt type and size, bib number, kit / check-in).
+- **Payment** = one payment attempt for an order (retries allowed).
+- **Certificate** = one per eligible runner (`certificate_no`, e.g. `FR-C-7K3M9Q2X`); the PDF is generated on demand.
+- **Event** has categories, each with its **own price and capacity**; the event capacity is their total.
 
 ---
 
-## 📚 API Endpoints
+## Getting started (short version)
 
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - User login
-- `GET /api/auth/profile` - Get current user profile
-- `PUT /api/auth/profile` - Update user profile
+Requirements: **Node.js 18+**, **MongoDB** (local or Atlas).
 
-### Events
-- `GET /api/events` - Get all published events (with filters)
-- `GET /api/events/:id` - Get event details
-- `POST /api/events` - Create event (admin/organizer)
-- `PUT /api/events/:id` - Update event (admin/organizer)
-- `DELETE /api/events/:id` - Delete event (admin/organizer)
-- `POST /api/events/:id/publish` - Publish event (admin/organizer)
-- `GET /api/events/organizer/my-events` - Get organizer's events
-
-### Registrations
-- `POST /api/registrations` - Register for event
-- `GET /api/registrations/my-registrations` - Get user's registrations
-- `GET /api/registrations/:id` - Get registration details
-- `DELETE /api/registrations/:id` - Cancel registration
-- `GET /api/registrations/event/:event_id/registrations` - Get event registrations (admin/organizer)
-
-### Payments
-- `POST /api/payments` - Process payment (mock - auto-success)
-- `GET /api/payments/registration/:registration_id` - Get payment details
-- `GET /api/payments/history/all` - Get payment history
-
-### Tickets
-- `POST /api/tickets/generate` - Generate QR ticket
-- `GET /api/tickets/registration/:registration_id` - Get ticket by registration
-- `GET /api/tickets/my-tickets` - Get user's tickets
-- `POST /api/tickets/checkin` - Check-in ticket (admin/organizer)
-
----
-
-## 🔐 Authentication Flow
-
-1. **Register**: User creates account with email and password (hashed with bcryptjs)
-2. **Login**: User provides credentials, receives JWT token
-3. **Token Storage**: JWT stored in localStorage on client
-4. **Token Validation**: Token included in Authorization header for protected routes
-5. **Middleware**: Backend verifies token for protected endpoints
-
----
-
-## 📝 Database Schema
-
-### User Model
-```javascript
-{
-  name: String,
-  email: String (unique),
-  password: String (hashed),
-  phone_no: String,
-  role: String (participant | organizer | admin),
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-### Event Model
-```javascript
-{
-  event_name: String,
-  description: String,
-  date: Date,
-  location: String,
-  category: String (5K | 10K | Half Marathon | Marathon | Family Run),
-  price: Number,
-  capacity: Number,
-  organizer_id: ObjectId (ref: User),
-  status: String (draft | published | closed),
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-### Registration Model
-```javascript
-{
-  user_id: ObjectId (ref: User),
-  event_id: ObjectId (ref: Event),
-  category: String,
-  shirt_size: String,
-  emergency_contact: String,
-  team_name: String,
-  registration_status: String (pending | confirmed | cancelled),
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-### Payment Model
-```javascript
-{
-  registration_id: ObjectId (ref: Registration) (unique),
-  amount: Number,
-  payment_method: String,
-  payment_status: String (pending | success | failed | refunded),
-  transaction_id: String (unique),
-  transaction_date: Date,
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
-### Ticket Model
-```javascript
-{
-  registration_id: ObjectId (ref: Registration) (unique),
-  qr_code: String (data URL),
-  check_in_status: Boolean,
-  ticket_code: String (unique),
-  createdAt: Date,
-  updatedAt: Date
-}
-```
-
----
-
-## 🎯 User Flow
-
-### Participant Journey
-1. **Register/Login** → Create account or login
-2. **Browse Events** → View all published events with filters
-3. **Event Detail** → View event information
-4. **Register** → Fill registration form (category, shirt size, emergency contact)
-5. **Payment** → Process mock payment (auto-succeeds)
-6. **Get Ticket** → Receive QR code ticket automatically
-7. **View Tickets** → Manage all registered events and tickets
-
-### Organizer Journey
-1. **Register as Organizer** → Select "Organizer" role during registration
-2. **Create Event** → Fill event details (name, date, location, category, price, capacity)
-3. **Publish Event** → Make event available for participants
-4. **View Registrations** → See all participants registered for the event
-5. **Manage Event** → Edit or delete event details
-
----
-
-## 💳 Mock Payment Module
-
-The payment module automatically processes all payments as successful:
-
-```javascript
-// Mock Payment Flow
-POST /api/payments
-{
-  "registration_id": "...",
-  "amount": 50,
-  "payment_method": "credit_card"
-}
-
-// Response - Always succeeds
-{
-  "message": "Payment processed successfully",
-  "payment": {
-    "payment_status": "success",
-    "transaction_id": "TXN_XXXXXXXX",
-    ...
-  }
-}
-```
-
-### To Modify Payment Behavior:
-Edit `backend/controllers/paymentController.js` in the `processPayment` function to add custom logic or fail conditions.
-
----
-
-## 🎫 QR Code Ticket Generation
-
-- QR codes are automatically generated using the `qrcode` npm package
-- Each ticket contains:
-  - Ticket code (unique identifier)
-  - Registration ID
-  - Timestamp
-- QR code is rendered as a data URL and stored in the database
-- Can be displayed, printed, or scanned for check-in
-
----
-
-## 🧪 Testing the Application
-
-### Test Credentials
-
-**Participant Account:**
-```
-Email: participant@run4fun.com
-Password: password123
-```
-
-**Organizer Account:**
-```
-Email: organizer@run4fun.com
-Password: password123
-```
-
-### Test Flow
-1. Register as participant
-2. Register as organizer
-3. Organizer creates an event
-4. Participant browses and registers for the event
-5. Payment is automatically processed
-6. QR ticket is generated
-7. Ticket displays in "My Tickets" page
-
----
-
-## 🛠️ Available Scripts
-
-### Backend
 ```bash
-npm run dev     # Start with nodemon (auto-reload)
-npm start       # Start production server
+# 1. Install
+cd backend && npm install
+cd ../frontend && npm install
+
+# 2. Configure: copy the examples and fill in
+cp backend/.env.example backend/.env       # MongoDB address, JWT secret, port, email…
+cp frontend/.env.example frontend/.env     # backend port for the dev proxy
+
+# 3. Run (two terminals)
+cd backend && npm run dev                  # http://localhost:5000  (5001 on macOS, see QUICKSTART)
+cd frontend && npm start                   # http://localhost:3000
+
+# 4. Optional: demo data and an admin
+cd backend && node scripts/seedDemoData.js
+node scripts/setRole.js <email-of-an-account> admin
 ```
 
-### Frontend
+Full instructions, a demo walkthrough, phone testing and troubleshooting: [QUICKSTART.md](QUICKSTART.md).
+
+---
+
+## Configuration
+
+**Backend** (`backend/.env`, see `backend/.env.example`):
+
+| Variable | Meaning |
+|---|---|
+| `MONGODB_URI` | MongoDB connection string |
+| `JWT_SECRET` | secret for login tokens (long random string) |
+| `PORT` | backend port (default 5000; use 5001 on macOS) |
+| `FRONTEND_URL` | the website's address (CORS) |
+| `PUBLIC_APP_URL` | address used in emails and certificate QR codes (defaults to `FRONTEND_URL`) |
+| `PAYMENT_MODE` | `mock` (demo "Pay" button, default) or `stripe` (not built yet) |
+| `EMAIL_MODE` | `console` (print, default) · `ethereal` (fake inbox with preview links) · `smtp` |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` | for `EMAIL_MODE=smtp` (e.g. Brevo) |
+| `EMAIL_DAILY_LIMIT` | provider's daily cap (default 300); the certificate sender stops before it |
+
+**Frontend** (`frontend/.env`, see `frontend/.env.example`):
+
+| Variable | Meaning |
+|---|---|
+| `BACKEND_PORT` / `BACKEND_URL` | where the development proxy sends `/api` (default `http://localhost:5000`) |
+| `REACT_APP_API_URL` | only for a separately hosted backend (e.g. deployed); otherwise `/api` is used |
+| `REACT_APP_PUBLIC_URL` | address put in QR codes (defaults to the address the site is opened on) |
+| `WDS_SOCKET_PORT=0` | lets live reload work through a tunnel |
+
+---
+
+## Scripts
+
+Run from `backend/`:
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | backend with auto-restart |
+| `npm test` | all backend tests (in-memory database) |
+| `node scripts/seedDemoData.js` | creates `[Demo]` events with registrations, bibs, payments, sponsors; re-runnable, touches only `[Demo]` events |
+| `node scripts/seedReportData.js` | one "Report Demo Run" event for the report module |
+| `node scripts/setRole.js <email> <participant\|organizer\|admin>` | change a role (how the first admin is created) |
+
+Frontend: `npm start`, `npm run build`, `CI=true npx react-scripts test --watchAll=false`.
+
+---
+
+## Testing
+
+- **Backend:** 206 automated tests covering registration rules (capacity per category, concurrent
+  registrations, CSV row errors), payment idempotency (no double bibs / emails), check-in access and
+  per-runner ticking, certificates (no duplicates, daily email cap, retries, verification privacy), roles
+  and organizer requests, reports, sponsors, pictures and events.
+- **Frontend:** 24 tests (CSV parsing incl. Excel encodings, validation, ticket card, gallery, dates).
+
 ```bash
-npm start       # Start development server
-npm build       # Build for production
-npm test        # Run tests
-npm eject       # Eject from create-react-app
+cd backend && npm test
+cd frontend && CI=true npx react-scripts test --watchAll=false
 ```
 
 ---
 
-## 📦 Dependencies
+## Known limitations
 
-### Backend
-- **express** - Web server framework
-- **mongoose** - MongoDB ODM
-- **jsonwebtoken** - JWT authentication
-- **bcryptjs** - Password hashing
-- **qrcode** - QR code generation
-- **cors** - Cross-origin resource sharing
-- **dotenv** - Environment variables
-
-### Frontend
-- **react** - UI library
-- **react-router-dom** - Routing
-- **axios** - HTTP client
-- **tailwindcss** - CSS framework
-- **qrcode.react** - QR code display
-- **react-hook-form** - Form management
+- Online payment is a **demo** (`PAYMENT_MODE=mock`); Stripe Checkout (test mode) is the next step.
+- Emails are only printed until an SMTP provider is configured (`EMAIL_MODE=smtp`).
+- Event-day helpers share the **organizer's login**, so actions are recorded under the organizer.
+- Certificate PDFs use built-in fonts: names in non-Latin scripts don't render; WebP sponsor logos are
+  skipped on certificates (PNG/JPEG are fine).
+- After a password reset, other devices stay logged in until their login expires (30 days).
+- Refunds and cancelling paid registrations are handled by the organizer outside the system.
 
 ---
 
-## 🔄 Workflow Example
+## Team
 
-### Complete Registration to Ticket Flow
-
-```
-1. User Registration
-   → POST /auth/register
-   → JWT token generated
-   
-2. Browse Events
-   → GET /events?location=...&category=...
-   → Display events list
-   
-3. Register for Event
-   → POST /registrations
-   → Registration created (status: pending)
-   
-4. Process Payment
-   → POST /payments
-   → Mock payment processed
-   → Registration status updated to (confirmed)
-   
-5. Generate Ticket
-   → POST /tickets/generate
-   → QR code created
-   → Ticket displayed to user
-   
-6. View Tickets
-   → GET /tickets/my-tickets
-   → All user tickets with QR codes displayed
-```
-
----
-
-## 🚨 Common Issues & Solutions
-
-### MongoDB Connection Error
-```
-Error: connect ECONNREFUSED 127.0.0.1:27017
-```
-**Solution:** Start MongoDB service or update MONGODB_URI in .env
-
-### CORS Error
-```
-Access to XMLHttpRequest blocked by CORS
-```
-**Solution:** Ensure FRONTEND_URL in backend .env matches frontend URL
-
-### Port Already in Use
-```
-Error: listen EADDRINUSE: address already in use :::5000
-```
-**Solution:** Change PORT in .env or kill the process using the port
-
-### Token Errors
-```
-Invalid token or No token provided
-```
-**Solution:** 
-- Clear localStorage: `localStorage.clear()`
-- Login again
-- Check JWT_SECRET matches in backend
-
----
-
-## 📋 Features Checklist
-
-- [x] User Authentication (JWT)
-- [x] User Registration & Login
-- [x] Event CRUD Operations
-- [x] Event Discovery & Filtering
-- [x] Registration Module
-- [x] Mock Payment Processing
-- [x] QR Code Generation
-- [x] Ticket Management
-- [x] Role-Based Access Control
-- [x] Responsive UI Design
-- [x] Password Hashing (bcryptjs)
-- [x] Protected Routes
-- [x] Error Handling
-- [x] API Documentation
-
----
-
-## 🔮 Future Enhancements
-
-- Real payment gateway integration (Stripe, PayPal)
-- Email notifications for registrations
-- Event analytics dashboard
-- Check-in scanning at event
-- Certificate generation
-- Sponsor integration
-- Advanced filtering and search
-- User profile customization
-- Multi-language support
-
----
-
-## 📄 License
-
-This project is created for educational purposes.
-
----
-
-## 👤 Author
-
-Created as a Fun Run Management System by Abdul Aliff Ammar Bin Abdul Khalid
-
----
-
-## 📞 Support
-
-For issues or questions, check the API endpoints documentation or review the example flows in this README.
-
-Happy Running! 🏃‍♂️🏃‍♀️
-#   F u n - R u n - M a n a g e m e n t - S y s t e m  
- 
+Two-student Final Year Project. Module owners: event discovery, registration, payment, e-ticket / QR,
+check-in and certificates; event management, notifications, reports and sponsors. User management is shared.

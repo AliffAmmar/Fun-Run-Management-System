@@ -1,5 +1,10 @@
 # Event Management Module 2 - Implementation Summary
 
+> **Archive (AP1).** This document describes the AP1 prototype and is kept for reference. Parts of it
+> are outdated (e.g. the `Registration` / `Ticket` models, the role dropdown at sign-up, `5K` / `10K`
+> category names). For the current system see [README.md](README.md), [QUICKSTART.md](QUICKSTART.md) and
+> [API_TESTING.md](API_TESTING.md).
+
 ## Overview
 Successfully implemented all requested features for Event Management Module 2 of the Run4Fun application.
 

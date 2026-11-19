@@ -1,12 +1,16 @@
 # Notification Module Documentation
 
 ## Overview
-The notification module allows users to receive notifications about various events in the Run4Fun application. There are four types of notifications:
+The notification module allows users to receive in-app notifications about events in the Run4Fun application. There are six types:
 
-1. **Welcome Notifications** - Users receive this when they register
-2. **Event Created Notifications** - All participants receive this when an organizer publishes a new event
-3. **Registration Confirmed Notifications** - Participants receive this when their registration is confirmed after payment
-4. **Participant Joined Notifications** - Organizers receive this when a participant registers for their event
+1. **Welcome** (`welcome`) - users receive this when they sign up
+2. **Event created** (`event_created`) - all participants receive this when an organizer publishes a new event
+3. **Registration confirmed** (`registration_confirmed`) - the buyer receives this when a registration (individual or group) is paid
+4. **Participant joined** (`participant_joined`) - the event's organizer receives this when a registration is paid (groups show as "Team X (12 runners)")
+5. **Organizer request** (`organizer_request`) - admins receive this when a participant requests organizer access
+6. **Role changed** (`role_changed`) - the user receives this when their organizer request is approved or declined
+
+Emails are separate from in-app notifications: see `backend/utils/email.js` (confirmation email, password reset, certificates, organizer requests).
 
 ## Architecture
 
@@ -15,7 +19,7 @@ The notification module allows users to receive notifications about various even
 #### Model: Notification (models/Notification.js)
 ```
 - user_id: ObjectId (ref: User)
-- type: String (enum: welcome, event_created, registration_confirmed, participant_joined)
+- type: String (enum: welcome, event_created, registration_confirmed, participant_joined, organizer_request, role_changed)
 - title: String
 - message: String
 - fullMessage: String (optional, longer detailed version)
@@ -62,15 +66,22 @@ DELETE /api/notifications                    - Delete all notifications
 - Message: "New event published: {event_name}"
 - Non-blocking operation to avoid delaying event publication
 
-**3. Registration Confirmed Notification (paymentController.js - processPayment function)**
-- Triggered after successful payment processing
-- Sent to the participant who registered
-- Message: "Your place on {event_name} is confirmed!"
+**3. Registration Confirmed Notification (utils/orderFulfilment.js - `fulfilOrder`)**
+- Triggered once when an order is paid (`fulfilOrder` is safe to call repeatedly, e.g. double clicks or a
+  repeated payment webhook, so the notification is never duplicated)
+- Sent to the buyer
+- Message: "Your registration {order_no} for {event_name} is confirmed!"
 
-**4. Participant Joined Notification (paymentController.js - processPayment function)**
-- Triggered after successful payment processing
+**4. Participant Joined Notification (utils/orderFulfilment.js - `fulfilOrder`)**
+- Triggered once when an order is paid
 - Sent to the event organizer
-- Message: "{participant_name} joined {event_name}"
+- Message: "{buyer name or group name (N runners)} joined {event_name}"
+
+**5. Organizer Request (controllers/organizerRequestController.js - `createRequest`)**
+- Sent to every admin when a participant requests organizer access (admins also get an email)
+
+**6. Role Changed (controllers/organizerRequestController.js - `approveRequest` / `rejectRequest`)**
+- Sent to the user when their request is approved ("You're now an organizer") or declined (with the reason)
 
 ### Frontend
 
@@ -186,9 +197,9 @@ Response:
 
 ### Test Scenario 3: Registration Confirmation
 1. Login as participant
-2. Go to event details and click "Register"
-3. Complete registration with event details
-4. Process payment (auto-succeeds in mock mode)
+2. Go to event details and click "Register Now"
+3. Complete an individual or group registration
+4. Click "Pay" (demo payment in `PAYMENT_MODE=mock`)
 5. Check notifications page
 6. Should see "Registration Confirmed" notification
 
@@ -205,7 +216,6 @@ Response:
 
 ## Future Enhancements
 - Real-time notifications using WebSockets
-- Email notifications
 - Push notifications
 - Notification preferences/settings
 - Notification categories and filtering options

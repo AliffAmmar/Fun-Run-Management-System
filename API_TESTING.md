@@ -1,600 +1,228 @@
-# API Testing Guide
+# API reference and testing guide
 
-## Base URL
-```
-http://localhost:5000/api
-```
+Base URL in development: `http://localhost:5000/api` (`5001` on macOS). Through the frontend dev server
+or a tunnel the same API is at `<site address>/api`.
 
-## Authentication Headers
-```
-Authorization: Bearer {JWT_TOKEN}
-Content-Type: application/json
-```
+- **Auth:** `Authorization: Bearer <token>` (token from `/auth/login` or `/auth/register`). The server
+  reads the user's **current role from the database** on every request, so role changes apply immediately.
+- **Format:** JSON in and out (field names in `snake_case`), except uploads (raw image body) and
+  downloads (PDF / ZIP / images).
+- **Errors:** `{ "message": "...", ... }` with `400` (invalid input), `401` (not logged in), `403`
+  (not allowed), `404` (not found), `409` (conflict: sold out, already done, duplicate), `500`.
 
----
+**Access column:** *public* · *login* (any logged-in user) · *buyer* (who made the registration) ·
+*organizer* (organizer of **that** event) · *admin*. Organizer actions are also allowed for admins.
 
-## Auth Endpoints
-
-### 1. Register User
-```http
-POST /auth/register
-Content-Type: application/json
-
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "password123",
-  "phone_no": "0123456789",
-  "role": "participant"
-}
-
-Response:
-{
-  "message": "User registered successfully",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": "...",
-    "name": "John Doe",
-    "email": "john@example.com",
-    "role": "participant"
-  }
-}
-```
-
-### 2. Login User
-```http
-POST /auth/login
-Content-Type: application/json
-
-{
-  "email": "john@example.com",
-  "password": "password123"
-}
-
-Response:
-{
-  "message": "Login successful",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": "...",
-    "name": "John Doe",
-    "email": "john@example.com",
-    "role": "participant"
-  }
-}
-```
-
-### 3. Get User Profile
-```http
-GET /auth/profile
-Authorization: Bearer {token}
-
-Response:
-{
-  "user": {
-    "id": "...",
-    "name": "John Doe",
-    "email": "john@example.com",
-    "phone_no": "0123456789",
-    "role": "participant"
-  }
-}
-```
-
-### 4. Update User Profile
-```http
-PUT /auth/profile
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "name": "John Updated",
-  "phone_no": "0987654321"
-}
-
-Response:
-{
-  "message": "Profile updated successfully",
-  "user": { ... }
-}
-```
+The backend's automated tests (`backend/tests/*.test.js`) are the most complete executable examples.
 
 ---
 
-## Event Endpoints
+## Auth and profile: `/api/auth`
 
-### 1. Get All Events (Public)
-```http
-GET /events
-GET /events?location=KL&category=5K&search=marathon
+| Method | Path | Access | Notes |
+|---|---|---|---|
+| POST | `/auth/register` | public | `{ name, email, password, phone_no? }` → always a **participant** (any `role` sent is ignored) |
+| POST | `/auth/login` | public | `{ email, password }` → `{ token, user }` (email case-insensitive) |
+| POST | `/auth/forgot-password` | public | `{ email }` → same reply whether or not it exists; emails a 30-minute single-use link |
+| POST | `/auth/reset-password` | public | `{ token, password }` |
+| GET | `/auth/profile` | login | `{ user: { id, name, email, phone_no, role, createdAt } }` |
+| PUT | `/auth/profile` | login | `{ name?, phone_no? }` (email and role can't be changed here) |
+| PUT | `/auth/password` | login | `{ current_password, new_password }` |
 
-Response:
+## Organizer requests and admin
+
+| Method | Path | Access | Notes |
+|---|---|---|---|
+| POST | `/organizer-requests` | participant | `{ organization, note? }`; one open request per user (else `409`) |
+| GET | `/organizer-requests/mine` | login | latest request or `null` |
+| DELETE | `/organizer-requests/mine` | login | withdraw a pending request |
+| GET | `/admin/organizer-requests?status=pending\|approved\|rejected` | admin | with requester details, `pending_count` |
+| POST | `/admin/organizer-requests/:id/approve` | admin | user becomes organizer immediately; notified + emailed |
+| POST | `/admin/organizer-requests/:id/reject` | admin | `{ reason? }` (shown to the user) |
+| GET | `/admin/users?q=&role=&page=` | admin | search users (50 per page) with `event_count` |
+| PATCH | `/admin/users/:id/role` | admin | `{ role: participant\|organizer }`; admins (incl. yourself) can't be changed here |
+
+The first admin is created with `node scripts/setRole.js <email> admin` (from `backend/`).
+
+## Events: `/api/events`
+
+| Method | Path | Access | Notes |
+|---|---|---|---|
+| GET | `/events?when=past&search=&location=&category=` | public | default: upcoming published events, soonest first; adds `sold_out`, `is_past`, `cover_image`, `info_images`, `categories[].sold_out` |
+| GET | `/events/:id` | public | drafts only for their organizer/admin |
+| GET | `/events/organizer/my-events` | organizer | your events |
+| POST | `/events` | organizer | see body below; created as draft |
+| PUT | `/events/:id` | organizer | partial; categories re-validated |
+| POST | `/events/:id/publish` | organizer | |
+| DELETE | `/events/:id` | organizer | also removes its pictures and sponsors |
+
+```json
 {
-  "events": [
-    {
-      "_id": "...",
-      "event_name": "Fun Run 2026",
-      "date": "2026-07-01T08:00:00.000Z",
-      "location": "Kuala Lumpur",
-      "category": "5K",
-      "price": 50,
-      "capacity": 100,
-      "description": "...",
-      "status": "published",
-      "organizer_id": { ... }
-    }
-  ]
+  "event_name": "Charity Run 2027",
+  "description": "Community run",
+  "date": "2027-02-13T23:00:00.000Z",
+  "location": "Taman Tasik Titiwangsa, Kuala Lumpur",
+  "categories": [
+    { "name": "5km", "price": 35, "capacity": 120 },
+    { "name": "10km", "price": 45, "capacity": 80 }
+  ],
+  "kit_cutoff_date": "2027-02-06T23:00:00.000Z"
 }
 ```
 
-### 2. Get Event Details
-```http
-GET /events/:id
+Categories: `1km 3km 5km 10km`, each with its **own capacity**; `capacity` (event total) is computed by the
+server. A category with registrations can't be removed or set below its registered runners.
+`kit_cutoff_date` is optional (default: buyers can edit runners until 7 days before the event).
 
-Response:
-{
-  "event": { ... }
-}
+### Event pictures: `/api/events/:eventId/images`
+
+| Method | Path | Access | Notes |
+|---|---|---|---|
+| POST | `/events/:eventId/images?kind=cover\|info&caption=` | organizer | **raw body**, `Content-Type: image/png\|jpeg\|webp`, ≤ 5 MB; a new cover replaces the old; ≤ 12 info pictures |
+| PATCH | `/events/:eventId/images/:imageId` | organizer | `{ caption }` |
+| DELETE | `/events/:eventId/images/:imageId` | organizer | |
+| GET | `/events/:eventId/images/:imageId` | public | the image (long-cached) |
+
+```bash
+curl -X POST "$API/events/$EVENT/images?kind=info&caption=Size%20chart" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: image/png" --data-binary @size-chart.png
 ```
 
-### 3. Create Event (Organizer/Admin Only)
-```http
-POST /events
-Authorization: Bearer {token}
-Content-Type: application/json
+### Sponsors: `/api/events/:eventId/sponsors`
 
+| Method | Path | Access | Notes |
+|---|---|---|---|
+| GET | `/events/:eventId/sponsors` | public | confirmed + visible only: `name, tier, tier_order, website_url, logo_url` |
+| GET | `/events/:eventId/sponsors/manage` | organizer | all sponsors incl. contacts and amounts + `summary` |
+| POST | `/events/:eventId/sponsors` | organizer | `{ name, tier?, tier_order?, contribution_type: cash\|in_kind, amount?, in_kind_description?, status: prospect\|confirmed\|cancelled, show_on_event_page?, website_url?, contact_name?, contact_email?, contact_phone?, notes? }` |
+| PUT | `/events/:eventId/sponsors/:id` | organizer | partial |
+| DELETE | `/events/:eventId/sponsors/:id` | organizer | |
+| PUT / DELETE | `/events/:eventId/sponsors/:id/logo` | organizer | raw PNG/JPEG/WebP ≤ 2 MB |
+| GET | `/events/:eventId/sponsors/:id/logo` | public | |
+
+## Registration (orders): `/api/orders`
+
+An **order** is one registration (one payment, one QR). Individual = 1 runner; group = 2–200.
+
+| Method | Path | Access | Notes |
+|---|---|---|---|
+| POST | `/orders` | login | create (body below) → `201 { order, warnings }`; status `pending` for 30 minutes |
+| GET | `/orders/my-orders` | login | your orders with runners, `shirt_sizes`, `shirt_breakdown`, `edit_until`, certificate numbers |
+| GET | `/orders/:order_no` | buyer, organizer, admin | |
+| DELETE | `/orders/:order_no` | buyer | cancel an **unpaid** order |
+| PATCH | `/orders/:order_no/participants/:participantId` | buyer (until the kit cutoff), organizer | `{ name?, shirt_type?, shirt_size? }`; shirt locked once that runner collected the kit |
+| GET | `/orders/event/:event_id` | organizer | all orders + capacity per category |
+
+```json
 {
-  "event_name": "Fun Run 2026",
-  "description": "Join us for a fun run",
-  "date": "2026-07-01T08:00:00",
-  "location": "Kuala Lumpur, Malaysia",
-  "category": "5K",
-  "price": 50,
-  "capacity": 100
-}
-
-Response:
-{
-  "message": "Event created successfully",
-  "event": { ... }
-}
-```
-
-### 4. Update Event (Organizer/Admin Only)
-```http
-PUT /events/:id
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "event_name": "Updated Event Name",
-  "price": 60,
-  ...
-}
-
-Response:
-{
-  "message": "Event updated successfully",
-  "event": { ... }
-}
-```
-
-### 5. Publish Event (Organizer/Admin Only)
-```http
-POST /events/:id/publish
-Authorization: Bearer {token}
-
-Response:
-{
-  "message": "Event published successfully",
-  "event": { ... }
-}
-```
-
-### 6. Delete Event (Organizer/Admin Only)
-```http
-DELETE /events/:id
-Authorization: Bearer {token}
-
-Response:
-{
-  "message": "Event deleted successfully"
-}
-```
-
-### 7. Get Organizer's Events
-```http
-GET /events/organizer/my-events
-Authorization: Bearer {token}
-
-Response:
-{
-  "events": [ ... ]
-}
-```
-
----
-
-## Registration Endpoints
-
-### 1. Register for Event
-```http
-POST /registrations
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "event_id": "...",
-  "category": "Individual",
-  "shirt_size": "M",
+  "event_id": "<event id>",
+  "type": "group",
+  "group_name": "Kelab Larian Surau",
+  "race_category": "5km",
   "emergency_contact": "0123456789",
-  "team_name": ""
-}
-
-Response:
-{
-  "message": "Registration created successfully",
-  "registration": {
-    "_id": "...",
-    "user_id": "...",
-    "event_id": "...",
-    "category": "Individual",
-    "shirt_size": "M",
-    "emergency_contact": "0123456789",
-    "registration_status": "pending"
-  }
-}
-```
-
-### 2. Get My Registrations
-```http
-GET /registrations/my-registrations
-Authorization: Bearer {token}
-
-Response:
-{
-  "registrations": [ ... ]
-}
-```
-
-### 3. Get Registration Details
-```http
-GET /registrations/:id
-Authorization: Bearer {token}
-
-Response:
-{
-  "registration": { ... }
-}
-```
-
-### 4. Cancel Registration
-```http
-DELETE /registrations/:id
-Authorization: Bearer {token}
-
-Response:
-{
-  "message": "Registration cancelled successfully",
-  "registration": { ... }
-}
-```
-
-### 5. Get Event Registrations (Organizer/Admin Only)
-```http
-GET /registrations/event/:event_id/registrations
-Authorization: Bearer {token}
-
-Response:
-{
-  "registrations": [ ... ]
-}
-```
-
----
-
-## Payment Endpoints
-
-### 1. Process Payment (Auto-Success Mock)
-```http
-POST /payments
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "registration_id": "...",
-  "amount": 50,
-  "payment_method": "credit_card"
-}
-
-Response:
-{
-  "message": "Payment processed successfully",
-  "payment": {
-    "_id": "...",
-    "registration_id": "...",
-    "amount": 50,
-    "payment_method": "credit_card",
-    "payment_status": "success",
-    "transaction_id": "TXN_XXXXXXXX",
-    "transaction_date": "2026-06-15T10:30:00.000Z"
-  }
-}
-```
-
-### 2. Get Payment by Registration
-```http
-GET /payments/registration/:registration_id
-Authorization: Bearer {token}
-
-Response:
-{
-  "payment": { ... }
-}
-```
-
-### 3. Get Payment History
-```http
-GET /payments/history/all
-Authorization: Bearer {token}
-
-Response:
-{
-  "payments": [ ... ]
-}
-```
-
----
-
-## Ticket Endpoints
-
-### 1. Generate Ticket (Auto after successful payment)
-```http
-POST /tickets/generate
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "registration_id": "..."
-}
-
-Response:
-{
-  "message": "Ticket generated successfully",
-  "ticket": {
-    "_id": "...",
-    "registration_id": "...",
-    "qr_code": "data:image/png;base64,iVBORw0KG...",
-    "ticket_code": "ABC123XYZ456",
-    "check_in_status": false
-  }
-}
-```
-
-### 2. Get Ticket by Registration
-```http
-GET /tickets/registration/:registration_id
-Authorization: Bearer {token}
-
-Response:
-{
-  "ticket": { ... }
-}
-```
-
-### 3. Get My Tickets
-```http
-GET /tickets/my-tickets
-Authorization: Bearer {token}
-
-Response:
-{
-  "tickets": [ ... ]
-}
-```
-
-### 4. Check-In Ticket (Organizer/Admin Only)
-```http
-POST /tickets/checkin
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "ticket_code": "ABC123XYZ456"
-}
-
-Response:
-{
-  "message": "Check-in successful",
-  "ticket": {
-    "_id": "...",
-    "check_in_status": true,
-    ...
-  }
-}
-```
-
----
-
-## Report Endpoints (Organizer/Admin Only)
-
-Use the JWT for an event's organizer or an admin. An organizer can only access their own events; another organizer receives `403 Forbidden` even though organizers can use general admin middleware elsewhere.
-
-### 1. Get Report Overview
-```http
-GET /reports/overview
-Authorization: Bearer {token}
-
-Response:
-{
-  "events": [
-    {
-      "_id": "EVENT_ID",
-      "event_name": "Fun Run 2026",
-      "registration_count": 12,
-      "total_participants": 18,
-      "total_revenue": 720,
-      "payment_counts": { "pending": 1, "failed": 0, "refunded": 0 },
-      "capacity_utilization": 0.18,
-      "checked_in_participants": 4,
-      "attendance_rate": 0.22,
-      "breakdowns": { "by_race_category": {}, "by_registration_type": {}, "by_payment_method": {}, "by_shirt_size": {}, "registrations_per_day": [] }
-    }
+  "consent_given": true,
+  "participants": [
+    { "name": "Ahmad bin Ali", "email": "ahmad@example.com", "shirt_type": "male", "shirt_size": "M" },
+    { "name": "Siti Aminah binti Hassan", "shirt_type": "female", "shirt_size": "S" }
   ]
 }
 ```
 
-### 2. Get Live Event Summary
-```http
-GET /reports/event/{eventId}/summary
-Authorization: Bearer {token}
+- The **price is computed by the server** (category price × runners); any amount sent is ignored.
+- `shirt_type` is the shirt's **cut** (`male`/`female`, also accepts M/F, men/women, lelaki/perempuan).
+- Bad rows → `400 { message, errors: [{ row, field, message }] }` (rows are 1-based).
+- Capacity: `409 "Only 5 slot(s) left in the 5km category…"`; the category limit and the event total both apply.
+- An email already registered for the event → accepted, with a `warnings` entry.
 
-Response:
-{
-  "event": { "_id": "EVENT_ID", "event_name": "Fun Run 2026", "capacity": 100 },
-  "metrics": {
-    "registration_count": 12,
-    "total_participants": 18,
-    "total_revenue": 720,
-    "payment_counts": { "pending": 1, "failed": 0, "refunded": 0 },
-    "breakdowns": {
-      "by_race_category": { "5km": { "participants": 18, "revenue": 720 } },
-      "by_registration_type": {},
-      "by_payment_method": {},
-      "by_shirt_size": { "M": 8 },
-      "registrations_per_day": [{ "date": "2026-06-15", "count": 4 }]
-    },
-    "capacity_utilization": 0.18,
-    "checked_in_participants": 4,
-    "attendance_rate": 0.22,
-    "capacity": 100
-  }
-}
-```
+## Payment: `/api/payments`
 
-### 3. Export Event Report
-```http
-POST /reports/event/{eventId}/export
-Authorization: Bearer {token}
-Content-Type: application/json
+| Method | Path | Access | Notes |
+|---|---|---|---|
+| GET | `/payments/config` | public | `{ mode: "mock" }` |
+| POST | `/payments/orders/:order_no/mock` | buyer | demo payment (`PAYMENT_MODE=mock`); `{ simulate: "fail" }` records a failed attempt (`402`) |
 
-{ "format": "csv" }
-```
-Use `{ "format": "pdf" }` for a PDF. The response is a streamed attachment with a `Content-Disposition` filename. A `Report` snapshot is saved for each successful export.
+A successful payment runs `fulfilOrder` once (safe to repeat): order **paid** → **bib numbers** (one
+consecutive block per group) → notifications → confirmation email with the QR code. An expired order
+returns `410`.
 
-### 4. Get Event Report History
-```http
-GET /reports/event/{eventId}/history
-Authorization: Bearer {token}
+## Check-in: `/api/checkin`
 
-Response:
-{
-  "reports": [
-    {
-      "_id": "REPORT_ID",
-      "event_id": "EVENT_ID",
-      "generated_by": { "name": "Organizer", "email": "organizer@example.com" },
-      "total_participants": 18,
-      "total_revenue": 720,
-      "export_format": "csv",
-      "export_file": "event-report-EVENT_ID-...csv",
-      "createdAt": "2026-06-15T10:30:00.000Z"
-    }
-  ]
-}
-```
+Opened by scanning an order's QR (`<site>/checkin/FR-1042`). Organizer of that event (or admin) only; the
+buyer gets `403 { is_buyer: true }` (the app shows their ticket), anyone else a plain `403`.
 
-### Authorization Checks
-1. As an organizer, request your own event summary; expect `200`.
-2. As a different organizer, request that event's summary, export, and history; expect `403` for each.
-3. As an admin, request the overview and another organizer's report; expect access.
-4. As a participant, request the overview; expect `403`. The frontend redirects participants away from report pages.
-5. Try an invalid event ID; expect `400`. Try a valid but nonexistent ID; expect `404`.
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/checkin/:order_no?event_id=<event being worked>` | order, buyer, runners with kit / check-in ticks, shirts per cut and size, warnings (unpaid, other event), activity log |
+| POST | `/checkin/:order_no/collect` | `{ participant_ids?, remark? }`; no ids = everyone not yet ticked; `participant_ids: []` + remark = note only |
+| POST | `/checkin/:order_no/checkin` | same, for race-day check-in |
+| POST | `/checkin/:order_no/undo` | `{ action: collect\|checkin, reason, participant_ids? }` |
+| GET | `/checkin/search?event_id=&q=` | lost QR: order number, group, buyer or runner name; plus totals per runner |
 
----
+The order counts as "kit collected" / "checked in" only when **every** runner is ticked.
 
-## Error Responses
+## Certificates: `/api/certificates`
 
-### 400 Bad Request
-```json
-{
-  "message": "Email already exists"
-}
-```
+| Method | Path | Access | Notes |
+|---|---|---|---|
+| GET | `/certificates/events/:eventId` | organizer | settings, eligible count, sending progress, list |
+| PUT | `/certificates/events/:eventId/settings` | organizer | `{ certificate_eligibility: all_paid\|kit_collected\|checked_in, certificate_text_color: dark\|light }` |
+| PUT / DELETE | `/certificates/events/:eventId/background` | organizer | raw PNG/JPEG ≤ 4 MB |
+| GET | `/certificates/events/:eventId/preview?name=` | organizer | sample PDF |
+| POST | `/certificates/events/:eventId/complete` | organizer | marks the event completed, creates one certificate per eligible runner, sends in the background (safe to repeat) |
+| POST | `/certificates/:certificateNo/resend` | organizer | `{ name? }` (fix the name first) |
+| GET | `/certificates/:certificateNo/pdf` | buyer, organizer | |
+| GET | `/certificates/orders/:orderNo/zip` | buyer, organizer | all certificates of a registration |
+| GET | `/certificates/verify/:certificateNo` | **public** | only `valid, name, race_category, event_name, event_date` |
 
-### 401 Unauthorized
-```json
-{
-  "message": "Invalid token"
-}
-```
+Sending: batches of 20, 3 attempts, stops before `EMAIL_DAILY_LIMIT` (25 kept free for other emails) and
+resumes automatically; runners without an email are skipped and the buyer gets one "certificates ready" email.
 
-### 403 Forbidden
-```json
-{
-  "message": "Not authorized to access this resource"
-}
-```
+## Reports: `/api/reports` (organizer/admin)
 
-### 404 Not Found
-```json
-{
-  "message": "Event not found"
-}
-```
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/reports/overview` | all your events with headline figures |
+| GET | `/reports/event/:eventId/summary` | `{ event, metrics }`, see [REPORT_MODULE.md](REPORT_MODULE.md) |
+| POST | `/reports/event/:eventId/export` | `{ format: csv\|pdf }` → file download |
+| GET | `/reports/event/:eventId/history` | past exports |
 
-### 500 Internal Server Error
-```json
-{
-  "message": "Internal server error",
-  "error": "error details"
-}
-```
+## Notifications: `/api/notifications` (login)
+
+`GET /notifications`, `GET /notifications/unread-count`, `PUT /notifications/:id/read`,
+`PUT /notifications/mark-all/read`, `DELETE /notifications/:id`, `DELETE /notifications`.
+See [NOTIFICATION_MODULE.md](NOTIFICATION_MODULE.md).
+
+## Health
+
+`GET /api/health` → `{ "message": "Server is running" }`
 
 ---
 
-## Sample Test Flow
+## A full flow with curl
 
-1. **Register**
-   ```bash
-   curl -X POST http://localhost:5000/api/auth/register \
-     -H "Content-Type: application/json" \
-     -d '{"name":"John","email":"john@test.com","password":"pass123","role":"participant"}'
-   ```
+```bash
+API=http://localhost:5001/api
 
-2. **Create Event** (as organizer)
-   ```bash
-   curl -X POST http://localhost:5000/api/events \
-     -H "Authorization: Bearer TOKEN" \
-     -H "Content-Type: application/json" \
-     -d '{"event_name":"Fun Run","date":"2026-07-01T08:00","location":"KL","category":"5K","price":50,"capacity":100}'
-   ```
+# 1. Log in (organizer and participant accounts must exist; see QUICKSTART)
+ORG=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"organizer@example.com","password":"secret123"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
+RUN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"runner@example.com","password":"secret123"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
 
-3. **Get Events**
-   ```bash
-   curl http://localhost:5000/api/events
-   ```
+# 2. Organizer creates and publishes an event
+EVENT=$(curl -s -X POST $API/events -H "Authorization: Bearer $ORG" -H 'Content-Type: application/json' -d '{
+  "event_name":"Test Run","description":"x","date":"2027-03-01T23:00:00.000Z","location":"KL",
+  "categories":[{"name":"5km","price":30,"capacity":50}]}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).event._id')
+curl -s -X POST $API/events/$EVENT/publish -H "Authorization: Bearer $ORG"
 
-4. **Register for Event**
-   ```bash
-   curl -X POST http://localhost:5000/api/registrations \
-     -H "Authorization: Bearer TOKEN" \
-     -H "Content-Type: application/json" \
-     -d '{"event_id":"EVENTID","category":"Individual","shirt_size":"M","emergency_contact":"0123456789"}'
-   ```
+# 3. Runner registers a group of two and pays (demo)
+ORDER=$(curl -s -X POST $API/orders -H "Authorization: Bearer $RUN" -H 'Content-Type: application/json' -d "{
+  \"event_id\":\"$EVENT\",\"type\":\"group\",\"group_name\":\"Team A\",\"race_category\":\"5km\",
+  \"emergency_contact\":\"0123\",\"consent_given\":true,\"participants\":[
+  {\"name\":\"Ali\",\"shirt_type\":\"male\",\"shirt_size\":\"M\"},{\"name\":\"Siti\",\"shirt_type\":\"female\",\"shirt_size\":\"S\"}]}" \
+  | node -pe 'JSON.parse(require("fs").readFileSync(0)).order.order_no')
+curl -s -X POST $API/payments/orders/$ORDER/mock -H "Authorization: Bearer $RUN"
 
-5. **Process Payment**
-   ```bash
-   curl -X POST http://localhost:5000/api/payments \
-     -H "Authorization: Bearer TOKEN" \
-     -H "Content-Type: application/json" \
-     -d '{"registration_id":"REGID","amount":50,"payment_method":"credit_card"}'
-   ```
-
-6. **Generate Ticket**
-   ```bash
-   curl -X POST http://localhost:5000/api/tickets/generate \
-     -H "Authorization: Bearer TOKEN" \
-     -H "Content-Type: application/json" \
-     -d '{"registration_id":"REGID"}'
-   ```
+# 4. Organizer checks the group in at kit collection (everyone)
+curl -s -X POST $API/checkin/$ORDER/collect -H "Authorization: Bearer $ORG"
+```

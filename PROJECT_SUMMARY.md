@@ -1,5 +1,10 @@
 # 🎉 Run4Fun - Complete MERN Full-Stack Application
 
+> **Archive (AP1).** This document describes the AP1 prototype and is kept for reference. Parts of it
+> are outdated (e.g. the `Registration` / `Ticket` models, the role dropdown at sign-up, `5K` / `10K`
+> category names). For the current system see [README.md](README.md), [QUICKSTART.md](QUICKSTART.md) and
+> [API_TESTING.md](API_TESTING.md).
+
 ## ✅ Project Completion Summary
 
 Your complete **Run4Fun Full-Stack MERN Fun Run Management System** has been successfully built! Here's what you have:

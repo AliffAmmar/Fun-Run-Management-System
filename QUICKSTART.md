@@ -1,236 +1,131 @@
-# Quick Start Guide - Run4Fun
+# Quick Start: run Run4Fun locally
 
-## ⚡ 5-Minute Setup
+About 10 minutes. Commands are for macOS/Linux; Windows notes where they differ.
 
-### Step 1: Install Dependencies
+## 1. Requirements
 
-**Terminal 1 - Backend:**
-```bash
-cd backend
-npm install
-```
+- **Node.js 18 or newer** (`node -v`)
+- **MongoDB** running locally, or a free MongoDB Atlas database
+  - macOS (Homebrew): `brew services start mongodb-community`, or start a downloaded `mongod`:
+    `mongod --dbpath ~/data/db --logpath ~/data/mongod.log --fork`
+  - Windows: MongoDB normally runs as a service after installation
+  - Check: `nc -z localhost 27017 && echo running`
 
-**Terminal 2 - Frontend:**
-```bash
-cd frontend
-npm install
-```
-
-### Step 2: Start MongoDB
-
-**Make sure MongoDB is running:**
-```bash
-# Windows - MongoDB runs as a service
-# macOS
-brew services start mongodb-community
-# Linux
-sudo systemctl start mongod
-```
-
-### Step 3: Start Backend Server
+## 2. Install
 
 ```bash
-cd backend
-npm run dev
+cd backend && npm install
+cd ../frontend && npm install
 ```
 
-Expected output:
-```
-Server running on port 5000
-MongoDB connected
-```
-
-### Step 4: Start Frontend Dev Server
+## 3. Configure
 
 ```bash
-cd frontend
-npm start
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 ```
 
-Browser will automatically open at `http://localhost:3000`
-
----
-
-## 🎮 Quick Test
-
-### 1. Register as Participant
-- Click "Register"
-- Fill in: Name, Email, Password, Phone (optional)
-- Select "Participant" role
-- Click Register
-
-### 2. Register as Organizer
-- Click "Register"
-- Fill in: Name, Email, Password, Phone (optional)
-- Select "Organizer" role
-- Click Register
-
-### 3. Create an Event (as Organizer)
-- Login with organizer account
-- Click "Create Event"
-- Fill event details:
-  - Event Name: "Morning Fun Run 2026"
-  - Description: "Join us for a fun morning run"
-  - Date/Time: Select future date
-  - Location: "Kuala Lumpur, Malaysia"
-  - Category: "5K"
-  - Price: "50"
-  - Capacity: "100"
-- Click "Create Event"
-
-### 4. Register for Event (as Participant)
-- Login with participant account
-- Click "Browse Events"
-- Find the event you just created
-- Click on it
-- Click "Register for This Event"
-- Fill registration form:
-  - Category: "Individual"
-  - Shirt Size: "M"
-  - Emergency Contact: "01234567890"
-  - Team Name: (leave empty or fill)
-- Click "Proceed to Payment"
-
-### 5. Complete Payment & Get Ticket
-- Click "Complete Payment"
-- System processes payment (auto-success)
-- QR code ticket is generated
-- Save ticket or view in "My Tickets"
-
----
-
-## 📁 File Structure Overview
+In `backend/.env`, set at least:
 
 ```
-Run4Fun/
-├── backend/          # Node.js + Express API
-│   └── server.js     # Start here: npm run dev
-├── frontend/         # React app
-│   └── src/App.js    # Start here: npm start
-└── README.md         # Full documentation
+MONGODB_URI=mongodb://localhost:27017/run4fun
+JWT_SECRET=<any long random string>
+PORT=5001
+FRONTEND_URL=http://localhost:3000
 ```
 
----
+> **macOS:** the AirPlay Receiver uses port 5000, so the backend runs on **5001** and `frontend/.env`
+> has `BACKEND_PORT=5001`. On Windows/Linux you can use 5000 and delete `BACKEND_PORT`.
 
-## 🔑 Key Endpoints
+Email is printed in the backend terminal by default (`EMAIL_MODE=console`). See
+[Emails](#emails) below to see real emails.
 
-### Create Event
-```
-POST http://localhost:5000/api/events
-Authorization: Bearer {token}
-Content-Type: application/json
+## 4. Run
 
-{
-  "event_name": "Fun Run 2026",
-  "date": "2026-07-01T08:00:00",
-  "location": "KL, Malaysia",
-  "category": "5K",
-  "price": 50,
-  "capacity": 100,
-  "description": "Join us!"
-}
-```
+Two terminals:
 
-### Get Events
-```
-GET http://localhost:5000/api/events
-GET http://localhost:5000/api/events?location=KL&category=5K
-```
-
-### Register for Event
-```
-POST http://localhost:5000/api/registrations
-Authorization: Bearer {token}
-
-{
-  "event_id": "...",
-  "category": "Individual",
-  "shirt_size": "M",
-  "emergency_contact": "0123456789"
-}
-```
-
-### Process Payment
-```
-POST http://localhost:5000/api/payments
-Authorization: Bearer {token}
-
-{
-  "registration_id": "...",
-  "amount": 50,
-  "payment_method": "credit_card"
-}
-```
-
-### Generate Ticket
-```
-POST http://localhost:5000/api/tickets/generate
-Authorization: Bearer {token}
-
-{
-  "registration_id": "..."
-}
-```
-
----
-
-## ✅ Troubleshooting
-
-### Port 5000 Already in Use
 ```bash
-# Find process using port 5000
-lsof -i :5000
-# Kill the process
-kill -9 <PID>
+cd backend && npm run dev     # "Server running on port 5001" + "MongoDB connected"
+cd frontend && npm start      # opens http://localhost:3000
 ```
 
-### Port 3000 Already in Use
+## 5. Demo data and accounts
+
+1. Open http://localhost:3000 and **sign up two accounts**: one for yourself as a runner, and one to
+   become the **admin** (everyone signs up as a participant).
+2. Make the second one admin:
+   ```bash
+   cd backend && node scripts/setRole.js admin@example.com admin
+   ```
+3. For an **organizer**: log in as a participant → **Profile → Request organizer access** →
+   log in as the admin → **Users → Requests → Approve**. (Or `node scripts/setRole.js <email> organizer`.)
+4. Demo events, registrations, payments and sponsors (owned by the first organizer, bought by the
+   participant accounts):
+   ```bash
+   node scripts/seedDemoData.js
+   ```
+   It creates three `[Demo]` events (two upcoming, one last week for certificates). Re-running it resets
+   only the `[Demo]` events.
+
+## 6. A 10-minute tour
+
+| As | Do | Where |
+|---|---|---|
+| Participant | Register a **group** with a CSV (`name,email,shirt_type,shirt_size`; "Download template" gives an example), see the shirt totals, pay with the demo button | Events → [Demo] Run4Fun Charity Run → Register |
+| Participant | Show the **QR** full screen, fix a runner's name, download certificates | ☰ → My Tickets |
+| Organizer | Scan the QR with a phone (see below) or search, **tick runners** for kit collection / check-in | ☰ → Event Day |
+| Organizer | Edit capacity per category, add a cover / size chart | ☰ → My Events → Edit |
+| Organizer | Add sponsors with logos | My Events → Sponsors |
+| Organizer | **Mark the past demo event as completed** → certificates are emailed | My Events → Certificates ([Demo] Bukit Kiara Morning Run) |
+| Anyone | Verify a certificate | `/verify/<certificate number>` (QR on the certificate) |
+| Organizer | Report incl. kit collection, shirts per cut, sponsorship; export CSV/PDF | My Events → View Report |
+| Admin | Approve organizer requests, change roles | ☰ → Users |
+
+## 7. Testing on a phone (QR scanning)
+
+A QR code contains a link to the address the site was opened on. `localhost` only works on the laptop
+itself, so for phones use one of:
+
+- **Same Wi-Fi:** open the site on the laptop via its network address (the frontend prints
+  "On Your Network: http://192.168.x.x:3000") and use that address on the phone too.
+  (Campus Wi-Fi often blocks this; an iPhone acting as the hotspot can't open its own clients.)
+- **Free tunnel (any network):**
+  ```bash
+  brew install cloudflared                      # Windows: winget install Cloudflare.cloudflared
+  cloudflared tunnel --url http://localhost:3000
+  ```
+  It prints `https://<random-words>.trycloudflare.com` (allow ~1 minute before it works). Open **that**
+  address on the laptop (so QR codes contain it) and on the phone. The address changes every time.
+
+Scan with the phone's normal **camera app**; log in as the organizer in the browser it opens.
+
+## 8. Emails
+
+| `EMAIL_MODE` | Result |
+|---|---|
+| `console` (default) | printed in the backend terminal (incl. password-reset links) |
+| `ethereal` | sent to a free fake inbox; the terminal prints a link to view each email |
+| `smtp` | real emails; free option: **Brevo** (300/day). Set `SMTP_HOST=smtp-relay.brevo.com`, `SMTP_PORT=587`, `SMTP_USER`, `SMTP_PASS` (SMTP key) and `EMAIL_FROM` (a verified sender) |
+
+Without your own domain, real emails may land in **Spam** at first. Links in emails use `PUBLIC_APP_URL`.
+
+## 9. Tests
+
 ```bash
-# The frontend will ask to use another port
-# Just press 'Y' when prompted
+cd backend && npm test                                  # 206 tests, in-memory MongoDB
+cd frontend && CI=true npx react-scripts test --watchAll=false
 ```
 
-### MongoDB Connection Failed
-- Ensure MongoDB is running
-- Update MONGODB_URI in backend/.env
-- For MongoDB Atlas, use cloud connection string
+The first backend run downloads a MongoDB binary for testing (~100 MB).
 
-### Token Issues
-- Clear browser cache: Ctrl+Shift+Delete
-- Clear localStorage in DevTools
-- Login again
+## Troubleshooting
 
-### CORS Errors
-- Check FRONTEND_URL in backend/.env is correct
-- Usually: http://localhost:3000
-
----
-
-## 💻 Production Deployment
-
-### Backend (Heroku Example)
-```bash
-cd backend
-heroku create your-app-name
-git push heroku main
-```
-
-### Frontend (Vercel Example)
-```bash
-cd frontend
-npm run build
-vercel deploy
-```
-
----
-
-## 📞 Getting Help
-
-1. **Check Console** - Browser DevTools (F12) → Console tab
-2. **Check Terminal** - Look for error messages in backend terminal
-3. **Check Network** - Browser DevTools (F12) → Network tab to see API calls
-4. **Review README.md** - Full documentation included
-
----
-
-Enjoy using Run4Fun! 🏃‍♂️💨
+| Problem | Fix |
+|---|---|
+| `EADDRINUSE ... :5000` on macOS | AirPlay Receiver uses 5000: use `PORT=5001` (backend) and `BACKEND_PORT=5001` (frontend), or turn AirPlay Receiver off |
+| `MongoDB connection error` / no data | MongoDB isn't running (see step 1), then restart the backend (`rs` in the nodemon terminal) |
+| Website loads but shows no events / "Failed to fetch" | the frontend's `BACKEND_PORT` doesn't match the backend's `PORT`; restart the frontend after changing `.env` |
+| Didn't receive a password-reset / confirmation email | `EMAIL_MODE=console` only prints them (check the backend terminal), or the email isn't registered |
+| Scanned QR opens a blank page on the phone | the QR contains `localhost`: open the site via the network address or tunnel (section 7) |
+| Can't see Event Day / My Events / Users | your account isn't an organizer/admin yet (section 5); refresh after a role change |
+| "Sold out" / "Only N left in the 5km category" | capacity is per category: raise it in Edit Event |
